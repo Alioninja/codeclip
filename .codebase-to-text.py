@@ -9,8 +9,7 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 # --- Configuration ---
-IGNORED_DIRS = {".git", "__pycache__", "venv", "env",
-                ".vscode", "node_modules", ".idea"}
+IGNORED_DIRS = {"__pycache__", "venv", "env", "node_modules"}
 IGNORED_FILES = {".DS_Store"}
 LIGHT_NESTED_BG = "#3c3c3c"
 DARK_NESTED_BG = "#303030"
@@ -38,12 +37,12 @@ IGNORED_FILES_NORMALIZED = {name.lower() for name in IGNORED_FILES}
 
 
 def is_ignored_dir(name):
-    return name.lower() in IGNORED_DIRS_BASENAMES
+    return name.lower() in IGNORED_DIRS_BASENAMES or name.startswith('.') or name.startswith('_')
 
 
 def is_ignored_file(name):
     lower_name = name.lower()
-    return lower_name in IGNORED_FILES_NORMALIZED or name.startswith('.')
+    return lower_name in IGNORED_FILES_NORMALIZED or name.startswith('.') or name.startswith('_')
 
 
 def path_contains_ignored_dir(path):
@@ -260,6 +259,82 @@ class App(ctk.CTk):
                     extension_counts[ext.lower()] += 1
         return extension_counts
 
+    def _get_language_from_extension(self, ext):
+        """Map file extensions to language identifiers for markdown code blocks."""
+        ext = ext.lower()
+
+        # Programming languages
+        language_map = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.ts': 'typescript',
+            '.tsx': 'tsx',
+            '.jsx': 'jsx',
+            '.java': 'java',
+            '.c': 'c',
+            '.cpp': 'cpp',
+            '.cc': 'cpp',
+            '.cxx': 'cpp',
+            '.h': 'c',
+            '.hpp': 'cpp',
+            '.cs': 'csharp',
+            '.php': 'php',
+            '.rb': 'ruby',
+            '.go': 'go',
+            '.rs': 'rust',
+            '.swift': 'swift',
+            '.kt': 'kotlin',
+            '.scala': 'scala',
+            '.sh': 'bash',
+            '.bash': 'bash',
+            '.zsh': 'zsh',
+            '.fish': 'fish',
+            '.ps1': 'powershell',
+            '.bat': 'batch',
+            '.cmd': 'batch',
+
+            # Web technologies
+            '.html': 'html',
+            '.htm': 'html',
+            '.xml': 'xml',
+            '.css': 'css',
+            '.scss': 'scss',
+            '.sass': 'sass',
+            '.less': 'less',
+
+            # Data formats
+            '.json': 'json',
+            '.yaml': 'yaml',
+            '.yml': 'yaml',
+            '.toml': 'toml',
+            '.ini': 'ini',
+            '.cfg': 'ini',
+            '.conf': 'conf',
+
+            # Documentation
+            '.md': 'markdown',
+            '.markdown': 'markdown',
+            '.rst': 'rst',
+            '.txt': 'text',
+
+            # Database
+            '.sql': 'sql',
+
+            # Other
+            '.dockerfile': 'dockerfile',
+            '.gitignore': 'gitignore',
+            '.env': 'bash',
+            '.r': 'r',
+            '.m': 'matlab',
+            '.pl': 'perl',
+            '.lua': 'lua',
+            '.vim': 'vim',
+            '.asm': 'assembly',
+            '.s': 'assembly',
+        }
+
+        return language_map.get(ext, '')
+
     # --- Create checkbox images ---
     def create_checkbox_images(self):
         size = 18
@@ -268,13 +343,13 @@ class App(ctk.CTk):
         radius = 3
 
         try:
-            fg_color = customtkinter.ThemeManager.get_color(
+            fg_color = ctk.ThemeManager.get_color(
                 ctk.ThemeManager.theme["CTkCheckBox"]["fg_color"])
-            border_color_checked = customtkinter.ThemeManager.get_color(
+            border_color_checked = ctk.ThemeManager.get_color(
                 ctk.ThemeManager.theme["CTkCheckBox"]["border_color"])
-            checkmark_color = customtkinter.ThemeManager.get_color(
+            checkmark_color = ctk.ThemeManager.get_color(
                 ctk.ThemeManager.theme["CTkCheckBox"]["checkmark_color"])
-            border_color_unchecked = customtkinter.ThemeManager.get_color(
+            border_color_unchecked = ctk.ThemeManager.get_color(
                 ctk.ThemeManager.theme["CTkLabel"]["text_color"])
             indeterminate_color = "#F39C12"  # Orange
             indeterminate_line_color = "#FFFFFF"  # White
@@ -754,7 +829,12 @@ class App(ctk.CTk):
                         file_path, self.current_dir).replace("\\", "/")
                     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                         content = f.read()
-                    combined_text += f"--- Start of {relative_path} ---\n{content}\n--- End of {relative_path} ---\n\n"
+
+                    # Get file extension for syntax highlighting
+                    _, ext = os.path.splitext(relative_path)
+                    language = self._get_language_from_extension(ext)
+
+                    combined_text += f"## {relative_path}\n\n```{language}\n{content}\n```\n\n"
                     file_count += 1
                     total_size += len(content.encode('utf-8'))
                 except Exception as e:
@@ -820,7 +900,8 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
                     if ext and ext.lower() in allowed_extensions:
                         entries.append(e)
                 elif e.is_dir(follow_symlinks=False):
-                    entries.append(e)
+                    if not is_ignored_dir(name):
+                        entries.append(e)
         entries.sort(key=lambda e: (e.is_file(), e.name.lower()))
     except OSError:
         return ""
