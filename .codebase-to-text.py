@@ -10,7 +10,7 @@ ctk.set_default_color_theme("blue")
 
 # --- Configuration ---
 IGNORED_DIRS = {"__pycache__", "venv", "env", "node_modules"}
-IGNORED_FILES = {".DS_Store"}
+IGNORED_FILES = {}
 LIGHT_NESTED_BG = "#3c3c3c"
 DARK_NESTED_BG = "#303030"
 INDICATOR_WIDTH = 18
@@ -37,6 +37,9 @@ IGNORED_FILES_NORMALIZED = {name.lower() for name in IGNORED_FILES}
 
 
 def is_ignored_dir(name):
+    # Don't ignore the current directory marker
+    if name == '.' or name == '..':
+        return False
     return name.lower() in IGNORED_DIRS_BASENAMES or name.startswith('.') or name.startswith('_')
 
 
@@ -426,8 +429,8 @@ class App(ctk.CTk):
 
             for entry in dirs:
                 sub_tree = self.build_folder_tree(entry.path)
-                if sub_tree.get("subfolders") or sub_tree.get("files"):
-                    tree["subfolders"][entry.name] = sub_tree
+                # Always include directories, even if empty
+                tree["subfolders"][entry.name] = sub_tree
         except OSError:
             pass
         return tree
@@ -914,11 +917,11 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
         extend = extender["last"] if is_last else extender["normal"]
 
         if entry.is_dir(follow_symlinks=False):
+            lines.append(prefix + pointer + entry.name + "/")
             subtree_str = get_tree_filtered_string(
                 entry.path, allowed_extensions, indent_char, prefix + extend
             )
             if subtree_str:
-                lines.append(prefix + pointer + entry.name + "/")
                 lines.append(subtree_str)
         else:
             lines.append(prefix + pointer + entry.name)
