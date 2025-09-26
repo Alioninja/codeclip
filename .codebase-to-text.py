@@ -23,6 +23,33 @@ INDENT_SIZE = 20  # Width for each indentation level
 # --- End Configuration ---
 
 
+# Precompute lowercase ignore sets for case-insensitive checks
+IGNORED_DIRS_NORMALIZED = {name.lower() for name in IGNORED_DIRS}
+IGNORED_FILES_NORMALIZED = {name.lower() for name in IGNORED_FILES}
+
+
+def is_ignored_dir(name):
+    lower_name = name.lower()
+    return lower_name in IGNORED_DIRS_NORMALIZED or name.startswith('.')
+
+
+def is_ignored_file(name):
+    lower_name = name.lower()
+    return lower_name in IGNORED_FILES_NORMALIZED or name.startswith('.')
+
+
+def path_contains_ignored_dir(path):
+    normalized = os.path.normpath(path)
+    if not normalized or normalized == os.curdir:
+        return False
+    parts = [p for p in normalized.split(
+        os.sep) if p not in ('', os.curdir, os.pardir)]
+    for part in parts:
+        if is_ignored_dir(part):
+            return True
+    return False
+
+
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -192,13 +219,21 @@ class App(ctk.CTk):
 
     # --- Scan extensions ---
     def scan_file_extensions(self, base_path):
+        if is_ignored_dir(os.path.basename(base_path)) or path_contains_ignored_dir(base_path):
+            return Counter()
+
+        normalized_base = os.path.normpath(base_path)
         extension_counts = Counter()
-        for root, dirs, files in os.walk(base_path, topdown=True):
-            dirs[:] = [
-                d for d in dirs if d not in IGNORED_DIRS and not d.startswith(".")]
-            files[:] = [
-                f for f in files if f not in IGNORED_FILES and not f.startswith(".")]
-            for file in files:
+        for root, dirs, files in os.walk(normalized_base, topdown=True, followlinks=False):
+            # Filter out ignored directories right away
+            dirs[:] = [d for d in dirs if not is_ignored_dir(d)]
+
+            if path_contains_ignored_dir(root):
+                dirs[:] = []
+                continue
+
+            filtered_files = [f for f in files if not is_ignored_file(f)]
+            for file in filtered_files:
                 _, ext = os.path.splitext(file)
                 if ext:
                     extension_counts[ext.lower()] += 1
@@ -269,19 +304,26 @@ class App(ctk.CTk):
 
     # --- Build folder tree ---
     def build_folder_tree(self, base_path):
+        if is_ignored_dir(os.path.basename(base_path)):
+            return {"subfolders": {}, "files": []}
         tree = {"subfolders": {}, "files": []}
+        if path_contains_ignored_dir(base_path):
+            return tree
         try:
             dirs = []
             files_in_dir = []
-            for entry in os.scandir(base_path):
-                if entry.name in IGNORED_DIRS or entry.name.startswith("."):
-                    continue
-                if entry.is_dir():
-                    dirs.append(entry)
-                elif entry.is_file() and entry.name not in IGNORED_FILES:
-                    _, ext = os.path.splitext(entry.name)
-                    if ext and ext.lower() in self.file_extension_counts_initial:
-                        files_in_dir.append(entry.name)
+            with os.scandir(base_path) as it:
+                for entry in it:
+                    name = entry.name
+                    entry_path = entry.path
+                    if path_contains_ignored_dir(entry_path) or is_ignored_dir(name):
+                        continue
+                    if entry.is_dir(follow_symlinks=False):
+                        dirs.append(entry)
+                    elif entry.is_file() and not is_ignored_file(name):
+                        _, ext = os.path.splitext(name)
+                        if ext and ext.lower() in self.file_extension_counts_initial:
+                            files_in_dir.append(name)
 
             tree["files"] = sorted(files_in_dir, key=str.lower)
             dirs.sort(key=lambda e: e.name.lower())
@@ -735,40 +777,48 @@ class App(ctk.CTk):
 
 
 def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="    ", prefix=""):
+    if path_contains_ignored_dir(start_path):
+        return ""
+
     lines = []
     pointers = {"last": "└── ", "normal": "├── "}
     extender = {"last": indent_char, "normal": "│" + indent_char[1:]}
 
     try:
-        entries = sorted(
-            [e for e in os.scandir(start_path) if not (
-                e.name in IGNORED_DIRS or e.name in IGNORED_FILES or e.name.startswith('.'))],
-            key=lambda e: (e.is_file(), e.name.lower())
-        )
+        with os.scandir(start_path) as it:
+            entries = []
+            for e in it:
+                name = e.name
+                entry_path = e.path
+                if path_contains_ignored_dir(entry_path):
+                    continue
+                if e.is_file():
+                    if is_ignored_file(name):
+                        continue
+                    _, ext = os.path.splitext(name)
+                    if ext and ext.lower() in allowed_extensions:
+                        entries.append(e)
+                elif e.is_dir(follow_symlinks=False):
+                    entries.append(e)
+        entries.sort(key=lambda e: (e.is_file(), e.name.lower()))
     except OSError:
         return ""
 
-    relevant_entries = []
-    for entry in entries:
-        if entry.is_dir():
-            relevant_entries.append(entry)
-        elif entry.is_file():
-            _, ext = os.path.splitext(entry.name)
-            if ext and ext.lower() in allowed_extensions:
-                relevant_entries.append(entry)
+    relevant_entries = entries  # already filtered
 
     for i, entry in enumerate(relevant_entries):
         is_last = (i == len(relevant_entries) - 1)
         pointer = pointers["last"] if is_last else pointers["normal"]
         extend = extender["last"] if is_last else extender["normal"]
 
-        if entry.is_dir():
+        if entry.is_dir(follow_symlinks=False):
             subtree_str = get_tree_filtered_string(
-                entry.path, allowed_extensions, indent_char, prefix + extend)
+                entry.path, allowed_extensions, indent_char, prefix + extend
+            )
             if subtree_str:
                 lines.append(prefix + pointer + entry.name + "/")
                 lines.append(subtree_str)
-        elif entry.is_file():
+        else:
             lines.append(prefix + pointer + entry.name)
 
     return "\n".join(lines)
