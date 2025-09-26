@@ -9,7 +9,7 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 # --- Configuration ---
-IGNORED_DIRS = {".git", "__pycache__", "venv",
+IGNORED_DIRS = {".git", "__pycache__", "venv", "env",
                 ".vscode", "node_modules", ".idea"}
 IGNORED_FILES = {".DS_Store"}
 LIGHT_NESTED_BG = "#3c3c3c"
