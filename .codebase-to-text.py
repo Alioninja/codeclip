@@ -19,6 +19,10 @@ NESTED_BG_CORNER_RADIUS = 6
 # Adjusted to show ~4 rows of checkboxes (approx 30px per row)
 FILE_TYPE_SECTION_MAX_HEIGHT = 160
 INDENT_SIZE = 20  # Width for each indentation level
+# File tree display limits
+MAX_FILES_TO_SHOW_ALL = 25  # Show all files if count is <= this number
+TREE_SHOW_FIRST_FILES = 10  # Number of first files to show when truncating
+TREE_SHOW_LAST_FILES = 3   # Number of last files to show when truncating
 # --- End Configuration ---
 
 
@@ -890,7 +894,8 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
 
     try:
         with os.scandir(start_path) as it:
-            entries = []
+            dirs = []
+            files = []
             for e in it:
                 name = e.name
                 entry_path = e.path
@@ -901,20 +906,45 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
                         continue
                     _, ext = os.path.splitext(name)
                     if ext and ext.lower() in allowed_extensions:
-                        entries.append(e)
+                        files.append(e)
                 elif e.is_dir(follow_symlinks=False):
                     if not is_ignored_dir(name):
-                        entries.append(e)
-        entries.sort(key=lambda e: (e.is_file(), e.name.lower()))
+                        dirs.append(e)
+
+        # Sort directories and files separately
+        dirs.sort(key=lambda e: e.name.lower())
+        files.sort(key=lambda e: e.name.lower())
+
+        # Apply file truncation if there are too many files
+        files_to_show = files
+        omitted_count = 0
+        if len(files) > MAX_FILES_TO_SHOW_ALL:
+            first_files = files[:TREE_SHOW_FIRST_FILES]
+            last_files = files[-TREE_SHOW_LAST_FILES:]
+            files_to_show = first_files + last_files
+            omitted_count = len(files) - len(files_to_show)
+
+        # Combine directories first, then files
+        all_entries = dirs + files_to_show
+
     except OSError:
         return ""
 
-    relevant_entries = entries  # already filtered
+    # Process entries
+    for i, entry in enumerate(all_entries):
+        is_last_entry = (i == len(all_entries) - 1)
 
-    for i, entry in enumerate(relevant_entries):
-        is_last = (i == len(relevant_entries) - 1)
-        pointer = pointers["last"] if is_last else pointers["normal"]
-        extend = extender["last"] if is_last else extender["normal"]
+        # Check if we need to insert the omitted files indicator
+        if (omitted_count > 0 and
+            entry in files and
+                i == len(dirs) + TREE_SHOW_FIRST_FILES):
+            # Insert the omitted files indicator before the last files
+            omitted_pointer = pointers["normal"]
+            lines.append(prefix + omitted_pointer +
+                         f"... ({omitted_count} files omitted) ...")
+
+        pointer = pointers["last"] if is_last_entry else pointers["normal"]
+        extend = extender["last"] if is_last_entry else extender["normal"]
 
         if entry.is_dir(follow_symlinks=False):
             lines.append(prefix + pointer + entry.name + "/")
