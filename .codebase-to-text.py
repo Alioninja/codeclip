@@ -24,12 +24,21 @@ INDENT_SIZE = 20  # Width for each indentation level
 
 
 # Precompute lowercase ignore sets for case-insensitive checks
-IGNORED_DIRS_NORMALIZED = {name.lower() for name in IGNORED_DIRS}
+def _normalized_parts(value):
+    """Return normalized, case-insensitive path parts."""
+    normalized = os.path.normpath(value).lower()
+    # Remove empty entries that can appear from leading/trailing separators.
+    return tuple(part for part in normalized.split(os.sep) if part)
+
+
+IGNORED_DIRS_COMPONENTS = [_normalized_parts(name) for name in IGNORED_DIRS]
+IGNORED_DIRS_BASENAMES = {parts[0]
+                          for parts in IGNORED_DIRS_COMPONENTS if len(parts) == 1}
 IGNORED_FILES_NORMALIZED = {name.lower() for name in IGNORED_FILES}
 
 
 def is_ignored_dir(name):
-    return name.lower() in IGNORED_DIRS_NORMALIZED
+    return name.lower() in IGNORED_DIRS_BASENAMES
 
 
 def is_ignored_file(name):
@@ -38,11 +47,27 @@ def is_ignored_file(name):
 
 
 def path_contains_ignored_dir(path):
-    normalized_path = os.path.normpath(path).lower()
-    for ignored_dir in IGNORED_DIRS_NORMALIZED:
-        normalized_ignored_dir = os.path.normpath(ignored_dir).lower()
-        if normalized_ignored_dir in normalized_path:
-            return True
+    path_parts = _normalized_parts(path)
+    if not path_parts:
+        return False
+
+    for ignored_parts in IGNORED_DIRS_COMPONENTS:
+        if not ignored_parts:
+            continue
+
+        if len(ignored_parts) == 1:
+            if ignored_parts[0] in path_parts:
+                return True
+            continue
+
+        parts_range = len(path_parts) - len(ignored_parts) + 1
+        if parts_range < 1:
+            continue
+
+        for index in range(parts_range):
+            if path_parts[index:index + len(ignored_parts)] == ignored_parts:
+                return True
+
     return False
 
 
