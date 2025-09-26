@@ -23,6 +23,11 @@ INDENT_SIZE = 20  # Width for each indentation level
 MAX_FILES_TO_SHOW_ALL = 25  # Show all files if count is <= this number
 TREE_SHOW_FIRST_FILES = 10  # Number of first files to show when truncating
 TREE_SHOW_LAST_FILES = 3   # Number of last files to show when truncating
+# Performance limits
+# Max files to scan per directory to avoid performance issues
+MAX_FILES_PER_DIR_SCAN = 100
+MAX_INITIAL_SCAN_DEPTH = 2    # Max depth for initial extension scanning
+LARGE_DIR_THRESHOLD = 50     # Directories with more files are considered "large"
 # --- End Configuration ---
 
 
@@ -93,6 +98,7 @@ class App(ctk.CTk):
         self.indent_size = INDENT_SIZE
 
         self.current_dir = os.getcwd()
+        self.limited_extensions = set()  # Track extensions that hit scanning limits
 
         self.file_extension_counts_initial = self.scan_file_extensions(
             self.current_dir)
@@ -251,7 +257,20 @@ class App(ctk.CTk):
 
         normalized_base = os.path.normpath(base_path)
         extension_counts = Counter()
+        current_depth = 0
+        # Track extensions that hit limits for special handling
+        self.limited_extensions = set()
+
         for root, dirs, files in os.walk(normalized_base, topdown=True, followlinks=False):
+            # Calculate current depth
+            current_depth = len(os.path.relpath(root, normalized_base).split(
+                os.sep)) - 1 if root != normalized_base else 0
+
+            # Skip deep directories for initial scan to improve performance
+            if current_depth > MAX_INITIAL_SCAN_DEPTH:
+                dirs[:] = []  # Don't descend further
+                continue
+
             # Filter out ignored directories right away
             dirs[:] = [d for d in dirs if not is_ignored_dir(d)]
 
@@ -259,11 +278,26 @@ class App(ctk.CTk):
                 dirs[:] = []
                 continue
 
+            # Limit the number of files we process per directory for performance
             filtered_files = [f for f in files if not is_ignored_file(f)]
-            for file in filtered_files:
+            if len(filtered_files) > MAX_FILES_PER_DIR_SCAN:
+                # For very large directories, sample files to estimate extensions
+                sampled_files = filtered_files[:MAX_FILES_PER_DIR_SCAN //
+                                               2] + filtered_files[-MAX_FILES_PER_DIR_SCAN//2:]
+                multiplier = len(filtered_files) / len(sampled_files)
+                # Mark that we hit a limit in this directory
+                for file in sampled_files:
+                    _, ext = os.path.splitext(file)
+                    if ext:
+                        self.limited_extensions.add(ext.lower())
+            else:
+                sampled_files = filtered_files
+                multiplier = 1
+
+            for file in sampled_files:
                 _, ext = os.path.splitext(file)
                 if ext:
-                    extension_counts[ext.lower()] += 1
+                    extension_counts[ext.lower()] += int(multiplier)
         return extension_counts
 
     def _get_language_from_extension(self, ext):
@@ -350,18 +384,32 @@ class App(ctk.CTk):
         radius = 3
 
         try:
-            fg_color = ctk.ThemeManager.get_color(
-                ctk.ThemeManager.theme["CTkCheckBox"]["fg_color"])
-            border_color_checked = ctk.ThemeManager.get_color(
-                ctk.ThemeManager.theme["CTkCheckBox"]["border_color"])
-            checkmark_color = ctk.ThemeManager.get_color(
-                ctk.ThemeManager.theme["CTkCheckBox"]["checkmark_color"])
-            border_color_unchecked = ctk.ThemeManager.get_color(
-                ctk.ThemeManager.theme["CTkLabel"]["text_color"])
+            # Try to get colors from theme using the proper CTK color system
+            current_mode = ctk.get_appearance_mode().lower()
+            theme = ctk.ThemeManager.theme
+
+            # Get colors for current appearance mode (0=light, 1=dark)
+            mode_index = 1 if current_mode == "dark" else 0
+
+            fg_color_raw = theme["CTkCheckBox"]["fg_color"][mode_index]
+            border_color_raw = theme["CTkCheckBox"]["border_color"][mode_index]
+            checkmark_color_raw = theme["CTkCheckBox"]["checkmark_color"][mode_index]
+            text_color_raw = theme["CTkLabel"]["text_color"][mode_index]
+
+            # Convert theme colors to hex if needed
+            fg_color = fg_color_raw if fg_color_raw.startswith(
+                "#") else "#2ECC71"
+            border_color_checked = border_color_raw if border_color_raw.startswith(
+                "#") else "#2ECC71"
+            checkmark_color = checkmark_color_raw if checkmark_color_raw.startswith(
+                "#") else "#FFFFFF"
+            border_color_unchecked = text_color_raw if text_color_raw.startswith(
+                "#") else "#888888"
+
             indeterminate_color = "#F39C12"  # Orange
             indeterminate_line_color = "#FFFFFF"  # White
-        except Exception as e:
-            print(f"Warning: Using fallback colors due to theme error: {e}")
+        except (AttributeError, KeyError, TypeError, IndexError):
+            # Use fallback colors if theme access fails
             fg_color = "#2ECC71"
             border_color_checked = "#2ECC71"
             checkmark_color = "#FFFFFF"
@@ -406,15 +454,23 @@ class App(ctk.CTk):
             light_image=indeterminate, dark_image=indeterminate, size=(size, size))
 
     # --- Build folder tree ---
-    def build_folder_tree(self, base_path):
+    def build_folder_tree(self, base_path, max_depth=None, current_depth=0):
         if is_ignored_dir(os.path.basename(base_path)):
-            return {"subfolders": {}, "files": []}
-        tree = {"subfolders": {}, "files": []}
+            return {"subfolders": {}, "files": [], "is_large": False}
+        tree = {"subfolders": {}, "files": [], "is_large": False}
         if path_contains_ignored_dir(base_path):
             return tree
+
+        # Stop recursion if we've reached max depth (for performance)
+        if max_depth is not None and current_depth >= max_depth:
+            tree["lazy_load"] = True
+            return tree
+
         try:
             dirs = []
             files_in_dir = []
+            file_count = 0
+
             with os.scandir(base_path) as it:
                 for entry in it:
                     name = entry.name
@@ -424,15 +480,25 @@ class App(ctk.CTk):
                     if entry.is_dir(follow_symlinks=False):
                         dirs.append(entry)
                     elif entry.is_file() and not is_ignored_file(name):
-                        _, ext = os.path.splitext(name)
-                        if ext and ext.lower() in self.file_extension_counts_initial:
-                            files_in_dir.append(name)
+                        file_count += 1
+                        # For performance, limit the number of files we process
+                        if file_count <= MAX_FILES_PER_DIR_SCAN:
+                            _, ext = os.path.splitext(name)
+                            if ext and ext.lower() in self.file_extension_counts_initial:
+                                files_in_dir.append(name)
+                        elif file_count == MAX_FILES_PER_DIR_SCAN + 1:
+                            # Mark as large directory
+                            tree["is_large"] = True
 
             tree["files"] = sorted(files_in_dir, key=str.lower)
             dirs.sort(key=lambda e: e.name.lower())
 
+            # For performance, limit recursion depth for initial build
+            next_max_depth = 3 if max_depth is None else max_depth  # Initial build depth limit
+
             for entry in dirs:
-                sub_tree = self.build_folder_tree(entry.path)
+                sub_tree = self.build_folder_tree(
+                    entry.path, next_max_depth, current_depth + 1)
                 # Always include directories, even if empty
                 tree["subfolders"][entry.name] = sub_tree
         except OSError:
@@ -769,7 +835,14 @@ class App(ctk.CTk):
 
         for ext, checkbox in self.file_type_checkboxes.items():
             count = current_counts.get(ext, 0)
-            label_text = f"{ext} files ({count})"
+            # Only show 'many' if the file type is selected AND we know there are files but they were limited
+            if (count == 0 and
+                ext in selected_exts and  # Only if the extension is currently selected
+                hasattr(self, 'limited_extensions') and
+                    ext in self.limited_extensions):
+                label_text = f"{ext} files (many)"
+            else:
+                label_text = f"{ext} files ({count})"
             if checkbox.winfo_exists():
                 checkbox.configure(text=label_text)
 
@@ -813,16 +886,18 @@ class App(ctk.CTk):
 
         thread = threading.Thread(
             target=self._process_thread,
-            args=(sorted(selected_files_paths), include_exts),
+            # Fixed: Added comma to make it a proper tuple
+            args=(sorted(selected_files_paths),),
         )
         thread.daemon = True
         thread.start()
 
-    def _process_thread(self, selected_files_paths, include_exts_set):
+    def _process_thread(self, selected_files_paths):
         start_time = time.time()
         try:
+            # Generate directory tree with ALL non-ignored files, not just selected types
             directory_tree = get_tree_filtered_string(
-                self.current_dir, allowed_extensions=tuple(include_exts_set))
+                self.current_dir, allowed_extensions=None)  # None means show all files
             combined_text = "PROJECT DIRECTORY STRUCTURE:\n" + directory_tree + \
                 "\n\n" + "=" * 20 + " FILE CONTENTS " + "=" * 20 + "\n\n"
 
@@ -896,6 +971,9 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
         with os.scandir(start_path) as it:
             dirs = []
             files = []
+            file_count = 0
+            too_many_files = False
+
             for e in it:
                 name = e.name
                 entry_path = e.path
@@ -904,9 +982,20 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
                 if e.is_file():
                     if is_ignored_file(name):
                         continue
-                    _, ext = os.path.splitext(name)
-                    if ext and ext.lower() in allowed_extensions:
+                    file_count += 1
+
+                    # For performance, limit scanning in very large directories
+                    if file_count > MAX_FILES_PER_DIR_SCAN:
+                        too_many_files = True
+                        continue
+
+                    # If allowed_extensions is None, show all files; otherwise filter by extension
+                    if allowed_extensions is None:
                         files.append(e)
+                    else:
+                        _, ext = os.path.splitext(name)
+                        if ext and ext.lower() in allowed_extensions:
+                            files.append(e)
                 elif e.is_dir(follow_symlinks=False):
                     if not is_ignored_dir(name):
                         dirs.append(e)
@@ -915,10 +1004,16 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
         dirs.sort(key=lambda e: e.name.lower())
         files.sort(key=lambda e: e.name.lower())
 
-        # Apply file truncation if there are too many files
+        # Apply file truncation if there are too many files (but not if we already limited due to performance)
         files_to_show = files
         omitted_count = 0
-        if len(files) > MAX_FILES_TO_SHOW_ALL:
+        performance_limit_msg = ""
+
+        if too_many_files:
+            # We hit the performance limit, show a different message
+            performance_limit_msg = f"... (directory too large, showing first {len(files)} of {file_count}+ files) ..."
+        elif len(files) > MAX_FILES_TO_SHOW_ALL:
+            # Normal file truncation
             first_files = files[:TREE_SHOW_FIRST_FILES]
             last_files = files[-TREE_SHOW_LAST_FILES:]
             files_to_show = first_files + last_files
@@ -930,18 +1025,22 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
     except OSError:
         return ""
 
-    # Process entries
-    for i, entry in enumerate(all_entries):
-        is_last_entry = (i == len(all_entries) - 1)
+        # Insert performance limit message at the beginning of files section if needed
+        if performance_limit_msg and len(dirs) < len(all_entries):
+            lines.append(prefix + pointers["normal"] + performance_limit_msg)
 
-        # Check if we need to insert the omitted files indicator
-        if (omitted_count > 0 and
-            entry in files and
-                i == len(dirs) + TREE_SHOW_FIRST_FILES):
-            # Insert the omitted files indicator before the last files
-            omitted_pointer = pointers["normal"]
-            lines.append(prefix + omitted_pointer +
-                         f"... ({omitted_count} files omitted) ...")
+        # Process entries
+        for i, entry in enumerate(all_entries):
+            is_last_entry = (i == len(all_entries) - 1)
+
+            # Check if we need to insert the omitted files indicator
+            if (omitted_count > 0 and
+                entry in files and
+                    i == len(dirs) + TREE_SHOW_FIRST_FILES):
+                # Insert the omitted files indicator before the last files
+                omitted_pointer = pointers["normal"]
+                lines.append(prefix + omitted_pointer +
+                             f"... ({omitted_count} files omitted) ...")
 
         pointer = pointers["last"] if is_last_entry else pointers["normal"]
         extend = extender["last"] if is_last_entry else extender["normal"]
