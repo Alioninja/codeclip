@@ -824,20 +824,18 @@ class App(ctk.CTk):
     # --- Update File Type Counts ---
     def update_file_type_counts(self):
         current_counts = Counter()
-        selected_exts = {ext.lower()
-                         for ext, var in self.file_type_vars.items() if var.get()}
+        # Count ALL files in selected folders, regardless of file type selection
         for folder_path, files_dict in self.file_vars.items():
             for file, var in files_dict.items():
-                if var.get():
+                if var.get():  # Only count files in selected folders/files
                     _, ext = os.path.splitext(file)
-                    if ext and ext.lower() in selected_exts:
+                    if ext:
                         current_counts[ext.lower()] += 1
 
         for ext, checkbox in self.file_type_checkboxes.items():
             count = current_counts.get(ext, 0)
-            # Only show 'many' if the file type is selected AND we know there are files but they were limited
+            # Only show 'many' if we know there are files but they were limited during scanning
             if (count == 0 and
-                ext in selected_exts and  # Only if the extension is currently selected
                 hasattr(self, 'limited_extensions') and
                     ext in self.limited_extensions):
                 label_text = f"{ext} files (many)"
@@ -1004,16 +1002,25 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
         dirs.sort(key=lambda e: e.name.lower())
         files.sort(key=lambda e: e.name.lower())
 
-        # Apply file truncation if there are too many files (but not if we already limited due to performance)
+        # Apply file truncation if there are too many files
         files_to_show = files
         omitted_count = 0
         performance_limit_msg = ""
 
         if too_many_files:
-            # We hit the performance limit, show a different message
-            performance_limit_msg = f"... (directory too large, showing first {len(files)} of {file_count}+ files) ..."
+            # We hit the performance limit, but still apply truncation for display
+            if len(files) > MAX_FILES_TO_SHOW_ALL:
+                # Apply normal truncation even with performance limits
+                first_files = files[:TREE_SHOW_FIRST_FILES]
+                last_files = files[-TREE_SHOW_LAST_FILES:]
+                files_to_show = first_files + last_files
+                omitted_count = len(files) - len(files_to_show)
+                performance_limit_msg = f"... (directory too large, showing first {TREE_SHOW_FIRST_FILES} and last {TREE_SHOW_LAST_FILES} of {file_count}+ files) ..."
+            else:
+                # Performance limit hit but not enough files to require truncation
+                performance_limit_msg = f"... (directory too large, showing first {len(files)} of {file_count}+ files) ..."
         elif len(files) > MAX_FILES_TO_SHOW_ALL:
-            # Normal file truncation
+            # Normal file truncation without performance limits
             first_files = files[:TREE_SHOW_FIRST_FILES]
             last_files = files[-TREE_SHOW_LAST_FILES:]
             files_to_show = first_files + last_files
@@ -1021,9 +1028,6 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
 
         # Combine directories first, then files
         all_entries = dirs + files_to_show
-
-    except OSError:
-        return ""
 
         # Insert performance limit message at the beginning of files section if needed
         if performance_limit_msg and len(dirs) < len(all_entries):
@@ -1042,18 +1046,21 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
                 lines.append(prefix + omitted_pointer +
                              f"... ({omitted_count} files omitted) ...")
 
-        pointer = pointers["last"] if is_last_entry else pointers["normal"]
-        extend = extender["last"] if is_last_entry else extender["normal"]
+            pointer = pointers["last"] if is_last_entry else pointers["normal"]
+            extend = extender["last"] if is_last_entry else extender["normal"]
 
-        if entry.is_dir(follow_symlinks=False):
-            lines.append(prefix + pointer + entry.name + "/")
-            subtree_str = get_tree_filtered_string(
-                entry.path, allowed_extensions, indent_char, prefix + extend
-            )
-            if subtree_str:
-                lines.append(subtree_str)
-        else:
-            lines.append(prefix + pointer + entry.name)
+            if entry.is_dir(follow_symlinks=False):
+                lines.append(prefix + pointer + entry.name + "/")
+                subtree_str = get_tree_filtered_string(
+                    entry.path, allowed_extensions, indent_char, prefix + extend
+                )
+                if subtree_str:
+                    lines.append(subtree_str)
+            else:
+                lines.append(prefix + pointer + entry.name)
+
+    except OSError:
+        return ""
 
     return "\n".join(lines)
 
