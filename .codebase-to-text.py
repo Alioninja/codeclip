@@ -29,8 +29,7 @@ IGNORED_FILES_NORMALIZED = {name.lower() for name in IGNORED_FILES}
 
 
 def is_ignored_dir(name):
-    lower_name = name.lower()
-    return lower_name in IGNORED_DIRS_NORMALIZED or name.startswith('.')
+    return name.lower() in IGNORED_DIRS_NORMALIZED
 
 
 def is_ignored_file(name):
@@ -39,13 +38,10 @@ def is_ignored_file(name):
 
 
 def path_contains_ignored_dir(path):
-    normalized = os.path.normpath(path)
-    if not normalized or normalized == os.curdir:
-        return False
-    parts = [p for p in normalized.split(
-        os.sep) if p not in ('', os.curdir, os.pardir)]
-    for part in parts:
-        if is_ignored_dir(part):
+    normalized_path = os.path.normpath(path).lower()
+    for ignored_dir in IGNORED_DIRS_NORMALIZED:
+        normalized_ignored_dir = os.path.normpath(ignored_dir).lower()
+        if normalized_ignored_dir in normalized_path:
             return True
     return False
 
