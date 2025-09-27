@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import threading
 import customtkinter as ctk
 from PIL import Image, ImageDraw
@@ -34,9 +34,9 @@ LARGE_DIR_THRESHOLD = 50     # Directories with more files are considered "large
 # Precompute lowercase ignore sets for case-insensitive checks
 def _normalized_parts(value):
     """Return normalized, case-insensitive path parts."""
-    normalized = os.path.normpath(value).lower()
+    normalized = str(Path(value)).lower()
     # Remove empty entries that can appear from leading/trailing separators.
-    return tuple(part for part in normalized.split(os.sep) if part)
+    return tuple(part for part in Path(normalized).parts if part)
 
 
 IGNORED_DIRS_COMPONENTS = [_normalized_parts(name) for name in IGNORED_DIRS]
@@ -97,7 +97,7 @@ class App(ctk.CTk):
         self.nested_bg_corner_radius = NESTED_BG_CORNER_RADIUS
         self.indent_size = INDENT_SIZE
 
-        self.current_dir = os.getcwd()
+        self.current_dir = Path.cwd()
         self.limited_extensions = set()  # Track extensions that hit scanning limits
 
         self.file_extension_counts_initial = self.scan_file_extensions(
@@ -252,52 +252,61 @@ class App(ctk.CTk):
 
     # --- Scan extensions ---
     def scan_file_extensions(self, base_path):
-        if is_ignored_dir(os.path.basename(base_path)) or path_contains_ignored_dir(base_path):
+        base_path = Path(base_path)
+        if is_ignored_dir(base_path.name) or path_contains_ignored_dir(str(base_path)):
             return Counter()
 
-        normalized_base = os.path.normpath(base_path)
         extension_counts = Counter()
-        current_depth = 0
         # Track extensions that hit limits for special handling
         self.limited_extensions = set()
 
-        for root, dirs, files in os.walk(normalized_base, topdown=True, followlinks=False):
-            # Calculate current depth
-            current_depth = len(os.path.relpath(root, normalized_base).split(
-                os.sep)) - 1 if root != normalized_base else 0
-
-            # Skip deep directories for initial scan to improve performance
+        def scan_directory(directory_path, current_depth=0):
+            """Recursively scan directory using pathlib"""
             if current_depth > MAX_INITIAL_SCAN_DEPTH:
-                dirs[:] = []  # Don't descend further
-                continue
+                return
 
-            # Filter out ignored directories right away
-            dirs[:] = [d for d in dirs if not is_ignored_dir(d)]
+            if path_contains_ignored_dir(str(directory_path)):
+                return
 
-            if path_contains_ignored_dir(root):
-                dirs[:] = []
-                continue
+            try:
+                # Get all files and subdirectories
+                all_files = []
+                subdirs = []
 
-            # Limit the number of files we process per directory for performance
-            filtered_files = [f for f in files if not is_ignored_file(f)]
-            if len(filtered_files) > MAX_FILES_PER_DIR_SCAN:
-                # For very large directories, sample files to estimate extensions
-                sampled_files = filtered_files[:MAX_FILES_PER_DIR_SCAN //
-                                               2] + filtered_files[-MAX_FILES_PER_DIR_SCAN//2:]
-                multiplier = len(filtered_files) / len(sampled_files)
-                # Mark that we hit a limit in this directory
+                for item in directory_path.iterdir():
+                    if item.is_file() and not is_ignored_file(item.name):
+                        all_files.append(item.name)
+                    elif item.is_dir() and not is_ignored_dir(item.name):
+                        subdirs.append(item)
+
+                # Process files in current directory
+                if len(all_files) > MAX_FILES_PER_DIR_SCAN:
+                    # For very large directories, sample files to estimate extensions
+                    sampled_files = all_files[:MAX_FILES_PER_DIR_SCAN //
+                                              2] + all_files[-MAX_FILES_PER_DIR_SCAN//2:]
+                    multiplier = len(all_files) / len(sampled_files)
+                    # Mark that we hit a limit in this directory
+                    for file in sampled_files:
+                        ext = Path(file).suffix
+                        if ext:
+                            self.limited_extensions.add(ext.lower())
+                else:
+                    sampled_files = all_files
+                    multiplier = 1
+
                 for file in sampled_files:
-                    _, ext = os.path.splitext(file)
+                    ext = Path(file).suffix
                     if ext:
-                        self.limited_extensions.add(ext.lower())
-            else:
-                sampled_files = filtered_files
-                multiplier = 1
+                        extension_counts[ext.lower()] += int(multiplier)
 
-            for file in sampled_files:
-                _, ext = os.path.splitext(file)
-                if ext:
-                    extension_counts[ext.lower()] += int(multiplier)
+                # Recursively scan subdirectories
+                for subdir in subdirs:
+                    scan_directory(subdir, current_depth + 1)
+
+            except (OSError, PermissionError):
+                pass
+
+        scan_directory(base_path)
         return extension_counts
 
     def _get_language_from_extension(self, ext):
@@ -455,10 +464,11 @@ class App(ctk.CTk):
 
     # --- Build folder tree ---
     def build_folder_tree(self, base_path, max_depth=None, current_depth=0):
-        if is_ignored_dir(os.path.basename(base_path)):
+        base_path = Path(base_path)
+        if is_ignored_dir(base_path.name):
             return {"subfolders": {}, "files": [], "is_large": False}
         tree = {"subfolders": {}, "files": [], "is_large": False}
-        if path_contains_ignored_dir(base_path):
+        if path_contains_ignored_dir(str(base_path)):
             return tree
 
         # Stop recursion if we've reached max depth (for performance)
@@ -471,24 +481,22 @@ class App(ctk.CTk):
             files_in_dir = []
             file_count = 0
 
-            with os.scandir(base_path) as it:
-                for entry in it:
-                    name = entry.name
-                    entry_path = entry.path
-                    if path_contains_ignored_dir(entry_path) or is_ignored_dir(name):
-                        continue
-                    if entry.is_dir(follow_symlinks=False):
-                        dirs.append(entry)
-                    elif entry.is_file() and not is_ignored_file(name):
-                        file_count += 1
-                        # For performance, limit the number of files we process
-                        if file_count <= MAX_FILES_PER_DIR_SCAN:
-                            _, ext = os.path.splitext(name)
-                            if ext and ext.lower() in self.file_extension_counts_initial:
-                                files_in_dir.append(name)
-                        elif file_count == MAX_FILES_PER_DIR_SCAN + 1:
-                            # Mark as large directory
-                            tree["is_large"] = True
+            for entry in base_path.iterdir():
+                name = entry.name
+                if path_contains_ignored_dir(str(entry)) or is_ignored_dir(name):
+                    continue
+                if entry.is_dir():
+                    dirs.append(entry)
+                elif entry.is_file() and not is_ignored_file(name):
+                    file_count += 1
+                    # For performance, limit the number of files we process
+                    if file_count <= MAX_FILES_PER_DIR_SCAN:
+                        ext = entry.suffix
+                        if ext and ext.lower() in self.file_extension_counts_initial:
+                            files_in_dir.append(name)
+                    elif file_count == MAX_FILES_PER_DIR_SCAN + 1:
+                        # Mark as large directory
+                        tree["is_large"] = True
 
             tree["files"] = sorted(files_in_dir, key=str.lower)
             dirs.sort(key=lambda e: e.name.lower())
@@ -498,7 +506,7 @@ class App(ctk.CTk):
 
             for entry in dirs:
                 sub_tree = self.build_folder_tree(
-                    entry.path, next_max_depth, current_depth + 1)
+                    entry, next_max_depth, current_depth + 1)
                 # Always include directories, even if empty
                 tree["subfolders"][entry.name] = sub_tree
         except OSError:
@@ -512,8 +520,8 @@ class App(ctk.CTk):
 
         if "subfolders" in tree_node:
             for folder, sub_tree_node in sorted(tree_node["subfolders"].items()):
-                folder_rel_path = os.path.join(
-                    parent_rel_path, folder) if parent_rel_path else folder
+                folder_rel_path = str(
+                    Path(parent_rel_path) / folder) if parent_rel_path else folder
                 has_children = bool(sub_tree_node.get(
                     "subfolders") or sub_tree_node.get("files"))
 
@@ -828,7 +836,7 @@ class App(ctk.CTk):
         for folder_path, files_dict in self.file_vars.items():
             for file, var in files_dict.items():
                 if var.get():  # Only count files in selected folders/files
-                    _, ext = os.path.splitext(file)
+                    ext = Path(file).suffix
                     if ext:
                         current_counts[ext.lower()] += 1
 
@@ -861,11 +869,10 @@ class App(ctk.CTk):
             if current_folder_path in self.file_vars:
                 for file, var in self.file_vars[current_folder_path].items():
                     if var.get():
-                        _, ext = os.path.splitext(file)
+                        ext = Path(file).suffix
                         if ext and ext.lower() in include_exts:
-                            full_path = os.path.join(
-                                self.current_dir, current_folder_path, file)
-                            selected_files_paths.append(full_path)
+                            full_path = self.current_dir / current_folder_path / file
+                            selected_files_paths.append(str(full_path))
 
             if current_folder_path in self.folder_children:
                 for subfolder_path in self.folder_children[current_folder_path]:
@@ -905,20 +912,21 @@ class App(ctk.CTk):
 
             for file_path in selected_files_paths:
                 try:
-                    relative_path = os.path.relpath(
-                        file_path, self.current_dir).replace("\\", "/")
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    file_path_obj = Path(file_path)
+                    relative_path = str(file_path_obj.relative_to(
+                        self.current_dir)).replace("\\", "/")
+                    with file_path_obj.open("r", encoding="utf-8", errors="ignore") as f:
                         content = f.read()
 
                     # Get file extension for syntax highlighting
-                    _, ext = os.path.splitext(relative_path)
+                    ext = file_path_obj.suffix
                     language = self._get_language_from_extension(ext)
 
                     combined_text += f"## {relative_path}\n\n```{language}\n{content}\n```\n\n"
                     file_count += 1
                     total_size += len(content.encode('utf-8'))
                 except Exception as e:
-                    error_msg = f"Error reading {os.path.relpath(file_path, self.current_dir)}: {e}"
+                    error_msg = f"Error reading {Path(file_path).relative_to(self.current_dir)}: {e}"
                     errors.append(error_msg)
                     print(error_msg)
 
@@ -958,7 +966,8 @@ class App(ctk.CTk):
 
 
 def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="    ", prefix=""):
-    if path_contains_ignored_dir(start_path):
+    start_path = Path(start_path)
+    if path_contains_ignored_dir(str(start_path)):
         return ""
 
     lines = []
@@ -966,37 +975,35 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
     extender = {"last": indent_char, "normal": "│" + indent_char[1:]}
 
     try:
-        with os.scandir(start_path) as it:
-            dirs = []
-            files = []
-            file_count = 0
-            too_many_files = False
+        dirs = []
+        files = []
+        file_count = 0
+        too_many_files = False
 
-            for e in it:
-                name = e.name
-                entry_path = e.path
-                if path_contains_ignored_dir(entry_path):
+        for entry in start_path.iterdir():
+            name = entry.name
+            if path_contains_ignored_dir(str(entry)):
+                continue
+            if entry.is_file():
+                if is_ignored_file(name):
                     continue
-                if e.is_file():
-                    if is_ignored_file(name):
-                        continue
-                    file_count += 1
+                file_count += 1
 
-                    # For performance, limit scanning in very large directories
-                    if file_count > MAX_FILES_PER_DIR_SCAN:
-                        too_many_files = True
-                        continue
+                # For performance, limit scanning in very large directories
+                if file_count > MAX_FILES_PER_DIR_SCAN:
+                    too_many_files = True
+                    continue
 
-                    # If allowed_extensions is None, show all files; otherwise filter by extension
-                    if allowed_extensions is None:
-                        files.append(e)
-                    else:
-                        _, ext = os.path.splitext(name)
-                        if ext and ext.lower() in allowed_extensions:
-                            files.append(e)
-                elif e.is_dir(follow_symlinks=False):
-                    if not is_ignored_dir(name):
-                        dirs.append(e)
+                # If allowed_extensions is None, show all files; otherwise filter by extension
+                if allowed_extensions is None:
+                    files.append(entry)
+                else:
+                    ext = entry.suffix
+                    if ext and ext.lower() in allowed_extensions:
+                        files.append(entry)
+            elif entry.is_dir():
+                if not is_ignored_dir(name):
+                    dirs.append(entry)
 
         # Sort directories and files separately
         dirs.sort(key=lambda e: e.name.lower())
@@ -1049,10 +1056,10 @@ def get_tree_filtered_string(start_path, allowed_extensions=(), indent_char="   
             pointer = pointers["last"] if is_last_entry else pointers["normal"]
             extend = extender["last"] if is_last_entry else extender["normal"]
 
-            if entry.is_dir(follow_symlinks=False):
+            if entry.is_dir():
                 lines.append(prefix + pointer + entry.name + "/")
                 subtree_str = get_tree_filtered_string(
-                    entry.path, allowed_extensions, indent_char, prefix + extend
+                    entry, allowed_extensions, indent_char, prefix + extend
                 )
                 if subtree_str:
                     lines.append(subtree_str)
