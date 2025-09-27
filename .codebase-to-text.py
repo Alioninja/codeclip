@@ -19,7 +19,7 @@ IGNORED_FILES = {}
 # Directories starting with these characters will be ignored
 IGNORED_DIR_PREFIXES = ['.', '_']
 # Files starting with these characters will be ignored
-IGNORED_FILE_PREFIXES = ['.', '_']
+IGNORED_FILE_PREFIXES = ['.']
 LIGHT_NESTED_BG = "#3c3c3c"
 DARK_NESTED_BG = "#303030"
 INDICATOR_WIDTH = 18
@@ -508,9 +508,9 @@ class App(ctk.CTk):
                     file_count += 1
                     # For performance, limit the number of files we process
                     if file_count <= MAX_FILES_PER_DIR_SCAN:
-                        ext = entry.suffix
-                        if ext and ext.lower() in self.file_extension_counts_initial:
-                            files_in_dir.append(name)
+                        # Include ALL non-ignored files, not just those with known extensions
+                        # This ensures __init__.py and other files are always shown
+                        files_in_dir.append(name)
                     elif file_count == MAX_FILES_PER_DIR_SCAN + 1:
                         # Mark as large directory
                         tree["is_large"] = True
