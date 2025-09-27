@@ -4,6 +4,8 @@ import customtkinter as ctk
 from PIL import Image, ImageDraw
 from collections import Counter
 import time
+import tkinter.filedialog as filedialog
+import tkinter.messagebox as messagebox
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -99,6 +101,437 @@ def path_contains_ignored_dir(path):
     return False
 
 
+class DirectorySelectionDialog(ctk.CTkToplevel):
+    """Custom directory selection dialog with beautiful UI matching the main theme."""
+
+    def __init__(self, parent, initial_path, is_startup=False):
+        super().__init__(parent)
+
+        self.parent = parent
+        self.current_path = Path(initial_path)
+        self.selected_path = None
+        self.is_startup = is_startup
+
+        self.setup_window()
+        self.create_widgets()
+        self.populate_directory_list()
+
+        # Make it modal and center the window
+        self.transient(parent)
+
+        # Center the window after everything is set up
+        self.after(10, self.center_window)
+
+        # Set up modal behavior
+        self.grab_set()
+
+    def setup_window(self):
+        """Configure the window properties."""
+        title = "Select Project Directory" if not self.is_startup else "Welcome to Codebase to Clipboard"
+        self.title(title)
+
+        # Set initial geometry (will be repositioned later)
+        self.geometry("700x500")
+        self.minsize(600, 400)
+
+        # Use the same appearance as parent
+        self.configure(fg_color=("gray95", "gray10"))
+
+        # Ensure window is resizable
+        self.resizable(True, True)
+
+        # Make sure window starts visible
+        self.deiconify()
+
+    def center_window(self):
+        """Center the dialog on the screen or parent window."""
+        self.update_idletasks()
+
+        # Get dialog dimensions
+        dialog_width = 700
+        dialog_height = 500
+
+        try:
+            # Try to center on parent window first
+            parent_x = self.parent.winfo_x()
+            parent_y = self.parent.winfo_y()
+            parent_width = self.parent.winfo_width()
+            parent_height = self.parent.winfo_height()
+
+            # Check if parent has valid position (not minimized or off-screen)
+            if parent_x >= 0 and parent_y >= 0 and parent_width > 0 and parent_height > 0:
+                # Calculate center position relative to parent
+                x = parent_x + (parent_width - dialog_width) // 2
+                y = parent_y + (parent_height - dialog_height) // 2
+
+                # Ensure the dialog is within screen bounds
+                screen_width = self.winfo_screenwidth()
+                screen_height = self.winfo_screenheight()
+
+                # Adjust if dialog would be off-screen
+                x = max(0, min(x, screen_width - dialog_width))
+                y = max(0, min(y, screen_height - dialog_height))
+            else:
+                # Parent window not ready, center on screen
+                raise ValueError("Parent window not ready")
+
+        except:
+            # Fallback: center on screen
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
+            x = (screen_width - dialog_width) // 2
+            y = (screen_height - dialog_height) // 2
+
+        # Apply the calculated position
+        self.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+
+        # Force window update and ensure visibility
+        self.update()
+        self.deiconify()
+        self.lift()
+
+        # Briefly set topmost to ensure visibility
+        self.attributes('-topmost', True)
+        self.after(100, lambda: self.attributes('-topmost', False))
+
+        # Additional positioning verification after update
+        self.after(50, self._verify_position)
+
+    def _verify_position(self):
+        """Verify the window is properly positioned and visible."""
+        try:
+            # Get current window position
+            current_x = self.winfo_x()
+            current_y = self.winfo_y()
+
+            # Get screen dimensions
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
+
+            # Check if window is off-screen or at invalid position
+            if current_x < -100 or current_y < -100 or current_x > screen_width or current_y > screen_height:
+                # Force center on screen if position is invalid
+                x = (screen_width - 700) // 2
+                y = (screen_height - 500) // 2
+                self.geometry(f"700x500+{x}+{y}")
+                self.lift()
+
+        except Exception:
+            # Fallback: just ensure window is lifted
+            self.lift()
+
+    def create_widgets(self):
+        """Create all UI widgets."""
+        main_frame = ctk.CTkFrame(self, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        main_frame.grid_columnconfigure(0, weight=1)
+        main_frame.grid_rowconfigure(2, weight=1)
+
+        # Header section
+        self.create_header(main_frame)
+
+        # Address bar section
+        self.create_address_bar(main_frame)
+
+        # Directory listing section
+        self.create_directory_listing(main_frame)
+
+        # Footer buttons section
+        self.create_footer_buttons(main_frame)
+
+    def create_header(self, parent):
+        """Create the header section."""
+        header_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 20))
+
+        if self.is_startup:
+            title_text = "🚀 Welcome to Codebase to Clipboard"
+            subtitle_text = "Select your project directory to get started"
+        else:
+            title_text = "📁 Change Project Directory"
+            subtitle_text = "Select a new directory for your project"
+
+        title_label = ctk.CTkLabel(
+            header_frame,
+            text=title_text,
+            font=("Arial", 24, "bold")
+        )
+        title_label.pack(anchor="w", pady=(0, 5))
+
+        subtitle_label = ctk.CTkLabel(
+            header_frame,
+            text=subtitle_text,
+            font=("Arial", 14),
+            text_color=("gray40", "gray60")
+        )
+        subtitle_label.pack(anchor="w")
+
+    def create_address_bar(self, parent):
+        """Create the address bar section."""
+        address_frame = ctk.CTkFrame(parent)
+        address_frame.grid(row=1, column=0, sticky="ew", pady=(0, 15))
+        address_frame.grid_columnconfigure(1, weight=1)
+
+        # Address bar label
+        address_label = ctk.CTkLabel(
+            address_frame,
+            text="📍 Location:",
+            font=("Arial", 12, "bold")
+        )
+        address_label.grid(row=0, column=0, padx=(15, 10), pady=15, sticky="w")
+
+        # Address bar entry
+        self.address_entry = ctk.CTkEntry(
+            address_frame,
+            placeholder_text="Enter directory path...",
+            height=35,
+            font=("Consolas", 11)
+        )
+        self.address_entry.grid(
+            row=0, column=1, padx=(0, 10), pady=15, sticky="ew")
+        self.address_entry.bind("<Return>", self.on_address_changed)
+
+        # Browse button
+        browse_btn = ctk.CTkButton(
+            address_frame,
+            text="Browse",
+            width=80,
+            height=35,
+            command=self.browse_directory
+        )
+        browse_btn.grid(row=0, column=2, padx=(0, 15), pady=15)
+
+    def create_directory_listing(self, parent):
+        """Create the directory listing section."""
+        listing_frame = ctk.CTkFrame(parent)
+        listing_frame.grid(row=2, column=0, sticky="nsew", pady=(0, 15))
+        listing_frame.grid_columnconfigure(0, weight=1)
+        listing_frame.grid_rowconfigure(0, weight=1)
+
+        # Directory list header
+        header = ctk.CTkFrame(listing_frame, height=40)
+        header.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 5))
+        header.grid_propagate(False)
+
+        header_label = ctk.CTkLabel(
+            header,
+            text="📂 Directory Contents",
+            font=("Arial", 14, "bold"),
+            anchor="w"
+        )
+        header_label.pack(side="left", padx=15, pady=10)
+
+        # Scrollable directory list
+        self.directory_list = ctk.CTkScrollableFrame(listing_frame)
+        self.directory_list.grid(
+            row=1, column=0, sticky="nsew", padx=15, pady=(0, 15))
+        self.directory_list.grid_columnconfigure(0, weight=1)
+
+    def create_footer_buttons(self, parent):
+        """Create the footer buttons section."""
+        footer_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        footer_frame.grid(row=3, column=0, sticky="ew")
+        footer_frame.grid_columnconfigure(1, weight=1)
+
+        # Current path info
+        path_info = ctk.CTkLabel(
+            footer_frame,
+            text=f"Selected: {self.current_path}",
+            font=("Arial", 10),
+            text_color=("gray50", "gray50"),
+            anchor="w"
+        )
+        path_info.grid(row=0, column=0, sticky="w", pady=(0, 10))
+
+        # Button frame
+        button_frame = ctk.CTkFrame(footer_frame, fg_color="transparent")
+        button_frame.grid(row=1, column=0, columnspan=2, sticky="e")
+
+        if self.is_startup:
+            # Cancel button
+            cancel_btn = ctk.CTkButton(
+                button_frame,
+                text="❌ Exit",
+                width=100,
+                height=35,
+                fg_color=("gray70", "gray30"),
+                hover_color=("gray60", "gray40"),
+                command=self.on_cancel
+            )
+            cancel_btn.pack(side="right", padx=(10, 0))
+        else:
+            # Cancel button
+            cancel_btn = ctk.CTkButton(
+                button_frame,
+                text="Cancel",
+                width=100,
+                height=35,
+                fg_color=("gray70", "gray30"),
+                hover_color=("gray60", "gray40"),
+                command=self.on_cancel
+            )
+            cancel_btn.pack(side="right", padx=(10, 0))
+
+        # Accept button
+        accept_btn = ctk.CTkButton(
+            button_frame,
+            text="✓ Select This Directory" if not self.is_startup else "🚀 Continue",
+            width=180,
+            height=35,
+            command=self.on_accept
+        )
+        accept_btn.pack(side="right")
+
+    def populate_directory_list(self):
+        """Populate the directory listing."""
+        # Clear existing items
+        for widget in self.directory_list.winfo_children():
+            widget.destroy()
+
+        # Update address bar
+        self.address_entry.delete(0, "end")
+        self.address_entry.insert(0, str(self.current_path))
+
+        try:
+            # Add parent directory option (unless at root)
+            if self.current_path.parent != self.current_path:
+                self.add_directory_item(
+                    "📁 ..", self.current_path.parent, is_parent=True)
+
+            # Add directories
+            directories = []
+            files = []
+
+            for item in sorted(self.current_path.iterdir()):
+                if item.is_dir() and not is_ignored_dir(item.name):
+                    directories.append(item)
+                elif item.is_file():
+                    files.append(item)
+
+            # Add directories first
+            for directory in directories:
+                self.add_directory_item(f"📁 {directory.name}", directory)
+
+            # Add a few files for context (but not selectable)
+            file_count = len(files)
+            if file_count > 0:
+                separator = ctk.CTkFrame(self.directory_list, height=2)
+                separator.pack(fill="x", padx=10, pady=5)
+
+                info_label = ctk.CTkLabel(
+                    self.directory_list,
+                    text=f"📄 {file_count} file{'s' if file_count != 1 else ''} in this directory",
+                    font=("Arial", 10),
+                    text_color=("gray50", "gray50")
+                )
+                info_label.pack(anchor="w", padx=20, pady=5)
+
+        except PermissionError:
+            error_label = ctk.CTkLabel(
+                self.directory_list,
+                text="❌ Access denied to this directory",
+                text_color="red"
+            )
+            error_label.pack(pady=20)
+
+    def add_directory_item(self, text, path, is_parent=False):
+        """Add a directory item to the list."""
+        item_frame = ctk.CTkFrame(self.directory_list, cursor="hand2")
+        item_frame.pack(fill="x", padx=5, pady=2)
+        item_frame.grid_columnconfigure(0, weight=1)
+
+        label = ctk.CTkLabel(
+            item_frame,
+            text=text,
+            anchor="w",
+            font=("Arial", 12)
+        )
+        label.grid(row=0, column=0, sticky="ew", padx=15, pady=10)
+
+        # Make the entire frame clickable
+        def on_click(event=None):
+            if path.is_dir():
+                self.current_path = path
+                self.populate_directory_list()
+
+        item_frame.bind("<Button-1>", on_click)
+        label.bind("<Button-1>", on_click)
+
+        # Hover effects
+        def on_enter(event=None):
+            item_frame.configure(fg_color=("gray80", "gray25"))
+
+        def on_leave(event=None):
+            item_frame.configure(fg_color=("gray90", "gray17"))
+
+        item_frame.bind("<Enter>", on_enter)
+        item_frame.bind("<Leave>", on_leave)
+        label.bind("<Enter>", on_enter)
+        label.bind("<Leave>", on_leave)
+
+    def on_address_changed(self, event=None):
+        """Handle address bar changes."""
+        new_path = self.address_entry.get().strip()
+        try:
+            path = Path(new_path)
+            if path.exists() and path.is_dir():
+                self.current_path = path
+                self.populate_directory_list()
+            else:
+                messagebox.showerror(
+                    "Error", f"Directory does not exist: {new_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Invalid path: {str(e)}")
+
+    def browse_directory(self):
+        """Open system directory browser."""
+        selected_dir = filedialog.askdirectory(
+            title="Select Directory",
+            initialdir=str(self.current_path)
+        )
+
+        if selected_dir:
+            self.current_path = Path(selected_dir)
+            self.populate_directory_list()
+
+    def on_accept(self):
+        """Handle accept button click."""
+        if self.current_path.exists() and self.current_path.is_dir():
+            self.selected_path = self.current_path
+            self.grab_release()
+            self.destroy()
+        else:
+            messagebox.showerror("Error", "Please select a valid directory.")
+
+    def on_cancel(self):
+        """Handle cancel button click."""
+        self.selected_path = None
+        self.grab_release()
+        self.destroy()
+
+    def show(self):
+        """Show the dialog and return the selected path."""
+        # Ensure the window is visible and properly positioned
+        self.deiconify()
+        self.lift()
+
+        # Force focus and bring to front
+        self.focus_force()
+        self.attributes('-topmost', True)
+
+        # Remove topmost after a brief moment to allow normal interaction
+        self.after(200, lambda: self.attributes('-topmost', False))
+
+        # Wait for the dialog to close
+        try:
+            self.wait_window()
+        except Exception:
+            # Handle case where window is already destroyed
+            pass
+
+        return self.selected_path
+
+
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -114,16 +547,18 @@ class App(ctk.CTk):
         self.nested_bg_corner_radius = NESTED_BG_CORNER_RADIUS
         self.indent_size = INDENT_SIZE
 
-        self.current_dir = Path.cwd()
+        # Initialize directory selection
+        self.current_dir = self.select_initial_directory()
+        if not self.current_dir:
+            self.destroy()
+            return
+
         self.limited_extensions = set()  # Track extensions that hit scanning limits
 
-        self.file_extension_counts_initial = self.scan_file_extensions(
-            self.current_dir)
-        self.sorted_extensions = sorted(self.file_extension_counts_initial.keys(),
-                                        key=lambda ext: self.file_extension_counts_initial[ext],
-                                        reverse=True)
+        self.initialize_project_data()
 
-        self.folder_tree = self.build_folder_tree(self.current_dir)
+        # Update window title with project name
+        self.title(f"Codebase to Clipboard - {self.current_dir.name}")
 
         # State dictionaries
         self.folder_vars = {}
@@ -162,9 +597,19 @@ class App(ctk.CTk):
             folder_header, text="Select Folders and Files:", anchor="w")
         folder_title.pack(side="left", padx=(0, 10))
 
+        # Directory info label
+        self.current_dir_label = ctk.CTkLabel(
+            folder_header, text=f"Project: {self.current_dir.name}",
+            anchor="w", font=("Arial", 12, "italic"))
+        self.current_dir_label.pack(side="left", padx=(10, 0))
+
         folder_button_frame = ctk.CTkFrame(
             folder_header, fg_color="transparent")
         folder_button_frame.pack(side="right")
+
+        change_dir_btn = ctk.CTkButton(
+            folder_button_frame, text="Change Project", width=120, height=28, command=self.change_directory)
+        change_dir_btn.pack(side="right", padx=(5, 0))
 
         folder_deselect_all_btn = ctk.CTkButton(
             folder_button_frame, text="Deselect All", width=100, height=28, command=self.deselect_all_folders)
@@ -266,6 +711,145 @@ class App(ctk.CTk):
         self.select_all_folders()
         self.update_file_type_counts()
         self.after(10, self.collapse_all_folders)
+
+    def select_initial_directory(self):
+        """Show custom directory selection dialog at startup."""
+        current_path = Path.cwd()
+
+        # Create custom directory selection window
+        dialog = DirectorySelectionDialog(self, current_path, is_startup=True)
+        selected_path = dialog.show()
+
+        return selected_path
+
+    def show_directory_dialog(self):
+        """Show custom directory selection dialog."""
+        dialog = DirectorySelectionDialog(
+            self, self.current_dir, is_startup=False)
+        selected_path = dialog.show()
+
+        return selected_path
+
+    def change_directory(self):
+        """Allow user to change the project directory from the main window."""
+        new_dir = self.show_directory_dialog()
+        if new_dir and new_dir != self.current_dir:
+            # Update current directory
+            self.current_dir = new_dir
+            self.update_status("Loading new project directory...")
+
+            # Reinitialize project data
+            self.after(100, self._reload_project)
+
+    def _reload_project(self):
+        """Reload project data after directory change."""
+        try:
+            # Clear existing data
+            self.clear_ui_data()
+
+            # Reinitialize project data
+            self.initialize_project_data()
+
+            # Update UI
+            self.update_current_dir_label()
+            self.rebuild_ui()
+
+            # Set initial state
+            self.select_all_folders()
+            self.update_file_type_counts()
+            self.after(10, self.collapse_all_folders)
+
+            self.update_status(f"Loaded project: {self.current_dir.name}")
+
+        except Exception as e:
+            messagebox.showerror(
+                "Error", f"Failed to load directory: {str(e)}")
+            self.update_status("Error loading directory")
+
+    def initialize_project_data(self):
+        """Initialize project data for the current directory."""
+        self.file_extension_counts_initial = self.scan_file_extensions(
+            self.current_dir)
+        self.sorted_extensions = sorted(self.file_extension_counts_initial.keys(),
+                                        key=lambda ext: self.file_extension_counts_initial[ext],
+                                        reverse=True)
+
+        self.folder_tree = self.build_folder_tree(self.current_dir)
+
+    def update_current_dir_label(self):
+        """Update the current directory label and window title."""
+        if hasattr(self, 'current_dir_label'):
+            self.current_dir_label.configure(
+                text=f"Project: {self.current_dir.name}")
+
+        # Update window title to show current project
+        self.title(f"Codebase to Clipboard - {self.current_dir.name}")
+
+    def clear_ui_data(self):
+        """Clear existing UI data before reloading."""
+        # Clear state dictionaries
+        self.folder_vars.clear()
+        self.folder_labels.clear()
+        self.file_vars.clear()
+        self.file_labels.clear()
+        self.folder_children.clear()
+        self.folder_parent.clear()
+        self.file_type_vars.clear()
+        self.file_type_checkboxes.clear()
+        self.folder_widget_refs.clear()
+        self.folder_states.clear()
+
+        # Clear folder container
+        for widget in self.folder_container.winfo_children():
+            widget.destroy()
+
+    def rebuild_ui(self):
+        """Rebuild the UI components after directory change."""
+        # Rebuild folder tree UI
+        self.create_folder_ui(
+            self.folder_tree, self.folder_container, parent_rel_path="", level=-1)
+
+        # Rebuild file type checkboxes
+        self.rebuild_file_type_checkboxes()
+
+    def rebuild_file_type_checkboxes(self):
+        """Rebuild file type checkboxes with new extensions."""
+        # Find the file type scrollable frame
+        for child in self.winfo_children():
+            if isinstance(child, ctk.CTkFrame):
+                for grandchild in child.winfo_children():
+                    if isinstance(grandchild, ctk.CTkFrame):
+                        for ggchild in grandchild.winfo_children():
+                            if isinstance(ggchild, ctk.CTkFrame) and ggchild.winfo_height() == FILE_TYPE_SECTION_MAX_HEIGHT:
+                                for scrollable in ggchild.winfo_children():
+                                    if isinstance(scrollable, ctk.CTkScrollableFrame):
+                                        # Clear existing checkboxes
+                                        for widget in scrollable.winfo_children():
+                                            widget.destroy()
+
+                                        # Rebuild checkboxes
+                                        num_columns = 3
+                                        for i, ext in enumerate(self.sorted_extensions):
+                                            var = ctk.BooleanVar(value=True)
+                                            self.file_type_vars[ext] = var
+                                            count = self.file_extension_counts_initial.get(
+                                                ext, 0)
+                                            label_text = f"{ext} files ({count})"
+                                            checkbox = ctk.CTkCheckBox(
+                                                scrollable, text=label_text, variable=var,
+                                                command=self.update_file_type_counts
+                                            )
+                                            row = i // num_columns
+                                            col = i % num_columns
+                                            checkbox.grid(
+                                                row=row, column=col, sticky="w", padx=10, pady=2)
+                                            self.file_type_checkboxes[ext] = checkbox
+                                        return
+
+    def update_status(self, message):
+        """Update the status label."""
+        if hasattr(self, 'status_label'):
+            self.status_label.configure(text=message)
 
     # --- Scan extensions ---
     def scan_file_extensions(self, base_path):
