@@ -11,6 +11,15 @@ ctk.set_default_color_theme("blue")
 # --- Configuration ---
 IGNORED_DIRS = {"__pycache__", "venv", "env", "node_modules"}
 IGNORED_FILES = {}
+# Characters that files/directories starting with should be ignored
+# Examples:
+#   ['.', '_'] - ignores .git, .vscode, _temp, __pycache__ (if not in IGNORED_DIRS)
+#   ['.', '_', '~'] - also ignores ~backup files
+#   ['#'] - ignores files starting with # (like #temp.py)
+# Directories starting with these characters will be ignored
+IGNORED_DIR_PREFIXES = ['.', '_']
+# Files starting with these characters will be ignored
+IGNORED_FILE_PREFIXES = ['.', '_']
 LIGHT_NESTED_BG = "#3c3c3c"
 DARK_NESTED_BG = "#303030"
 INDICATOR_WIDTH = 18
@@ -49,12 +58,20 @@ def is_ignored_dir(name):
     # Don't ignore the current directory marker
     if name == '.' or name == '..':
         return False
-    return name.lower() in IGNORED_DIRS_BASENAMES or name.startswith('.') or name.startswith('_')
+    # Check exact name matches first
+    if name.lower() in IGNORED_DIRS_BASENAMES:
+        return True
+    # Check if name starts with any ignored prefix
+    return any(name.startswith(prefix) for prefix in IGNORED_DIR_PREFIXES)
 
 
 def is_ignored_file(name):
     lower_name = name.lower()
-    return lower_name in IGNORED_FILES_NORMALIZED or name.startswith('.') or name.startswith('_')
+    # Check exact name matches first
+    if lower_name in IGNORED_FILES_NORMALIZED:
+        return True
+    # Check if name starts with any ignored prefix
+    return any(name.startswith(prefix) for prefix in IGNORED_FILE_PREFIXES)
 
 
 def path_contains_ignored_dir(path):
