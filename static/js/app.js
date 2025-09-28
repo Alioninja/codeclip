@@ -98,6 +98,9 @@ class CodebaseApp {
             const response = await fetch('/api/get-home-directories');
             const directories = await response.json();
 
+            // Clear existing content to prevent duplicates
+            this.quickAccess.innerHTML = '';
+
             const quickAccessGrid = document.createElement('div');
             quickAccessGrid.className = 'quick-access-grid';
 
