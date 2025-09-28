@@ -131,24 +131,6 @@ python .codebase-to-text.py
 
 All dependencies are listed in `requirements.txt` for easy installation.
 
-## 🆕 **What's New**
-
-### **Version 2.0 - Major Interface Overhaul**
-
-- 🎨 **Complete UI redesign** with professional directory selection
-- 🚀 **Startup project selection** with beautiful themed dialog
-- 📁 **Advanced directory browser** with address bar and navigation
-- 🔄 **Project switching capability** without restarting the application
-- ⚡ **Improved performance** with better file scanning and UI updates
-- 🎯 **Space-optimized interface** with compact folder items
-- 🛡️ **Enhanced error handling** and user feedback
-
-### **Navigation Improvements**
-- ↰ **Up Directory button** with clear, intuitive labeling
-- 📍 **Click-to-browse address bar** for quick navigation
-- 🔄 **Automatic scroll reset** when navigating directories
-- 📊 **File count display** moved to footer for cleaner interface
-
 ## 📝 Contributing
 
 Pull requests are welcome! Please open an issue first to discuss changes.
