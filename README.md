@@ -52,6 +52,7 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/Alioninja/codeclip.git
+cd codeclip
 ```
 
 Install dependencies:
@@ -62,16 +63,91 @@ pip install -r requirements.txt
 
 ## 🎯 Usage
 
-1. Place `.codebase-to-text.py` in your project's root directory.
-2. Run the application:
+### 🚀 **Getting Started**
+
+1. Run the application from any directory:
 
 ```bash
 python .codebase-to-text.py
 ```
 
-3. Choose your files, folders, or entire directory.
-4. Click **Generate Text and Copy to Clipboard**.
-5. Paste into your AI chatbot and ask away!
+2. **Choose your project directory:**
+   - Beautiful startup dialog appears automatically
+   - Select current directory or browse to a different project
+   - Professional interface with address bar and navigation
+
+3. **Select your content:**
+   - Browse directories with the intuitive file tree
+   - Use checkboxes to select specific files or entire folders
+   - Filter by file types with the smart detection system
+   - Switch projects anytime with "Change Project" button
+
+4. **Generate and copy:**
+   - Click **"Generate Text and Copy to Clipboard"**
+   - Properly formatted content is copied instantly
+   - Paste directly into any AI chatbot
+
+5. **Ask your questions!**
+   - Content includes file paths and directory structure
+   - Perfect for AI code analysis, debugging, and enhancement
+
+### 💡 **Pro Tips**
+
+- **🔄 Project Switching**: Use "Change Project" to work with multiple codebases
+- **📁 Smart Navigation**: Click the address bar or use "↰ Up Directory" button
+- **🎯 File Filtering**: Uncheck file types you don't need for focused analysis
+- **📏 Efficient Browsing**: Compact folder items show more directories at once
+- **⚡ Quick Selection**: "Select All" and "Deselect All" buttons for bulk operations
+
+## 🎨 **Interface Highlights**
+
+### **Directory Selection Dialog**
+- 🚀 Welcome screen with project selection
+- 📍 Address bar with click-to-browse functionality  
+- 🔙 Reliable "Up Directory" navigation
+- 📄 File count display in footer
+- 🎨 Consistent dark theme matching main application
+
+### **Main Application**  
+- 🗂️ Visual directory tree with expand/collapse
+- ☑️ Smart file type detection and filtering
+- 📊 Real-time file counting and statistics
+- 🔄 Seamless project switching without restart
+
+## 🔧 **Technical Features**
+
+- **🎯 Smart Directory Scanning**: Automatically detects and categorizes all file types
+- **📦 Optimized Performance**: Efficient scanning with limits for large directories
+- **🛡️ Robust Error Handling**: Graceful handling of permission errors and invalid paths
+- **💾 Memory Efficient**: Proper cleanup and resource management
+- **🖥️ Cross-Platform**: Works on Windows, macOS, and Linux
+- **⚡ Responsive UI**: Smooth interactions and proper window management
+
+## 📋 **Requirements**
+
+- **Python 3.7+**
+- **customtkinter** - Modern UI framework
+- **Pillow** - Image processing for UI elements
+
+All dependencies are listed in `requirements.txt` for easy installation.
+
+## 🆕 **What's New**
+
+### **Version 2.0 - Major Interface Overhaul**
+
+- 🎨 **Complete UI redesign** with professional directory selection
+- 🚀 **Startup project selection** with beautiful themed dialog
+- 📁 **Advanced directory browser** with address bar and navigation
+- 🔄 **Project switching capability** without restarting the application
+- ⚡ **Improved performance** with better file scanning and UI updates
+- 🎯 **Space-optimized interface** with compact folder items
+- 🛡️ **Enhanced error handling** and user feedback
+
+### **Navigation Improvements**
+- ↰ **Up Directory button** with clear, intuitive labeling
+- 📍 **Click-to-browse address bar** for quick navigation
+- 🔄 **Automatic scroll reset** when navigating directories
+- 📊 **File count display** moved to footer for cleaner interface
 
 ## 📝 Contributing
 
