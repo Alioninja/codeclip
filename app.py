@@ -556,7 +556,7 @@ def serialize_tree(tree, path_prefix=None):
 
 def open_browser():
     """Open web browser to the application"""
-    webbrowser.open('http://127.0.0.1:5000')
+    webbrowser.open('http://127.0.0.1:5002')
 
 
 if __name__ == '__main__':
@@ -580,7 +580,8 @@ def browse_directory_native():
 
     try:
         if system == 'Windows':
-            powershell = shutil.which('powershell.exe') or shutil.which('powershell')
+            powershell = shutil.which(
+                'powershell.exe') or shutil.which('powershell')
             if powershell:
                 preset_dir = current_dir.replace("'", "''")
                 script = f"""Add-Type -AssemblyName System.Windows.Forms | Out-Null
@@ -649,7 +650,8 @@ if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
             kdialog = shutil.which('kdialog')
             if kdialog:
                 result = subprocess.run(
-                    [kdialog, '--getexistingdirectory', current_dir, '--title', 'Select a Project Directory'],
+                    [kdialog, '--getexistingdirectory', current_dir,
+                        '--title', 'Select a Project Directory'],
                     capture_output=True,
                     text=True
                 )
@@ -666,7 +668,8 @@ if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
 
     print('Unable to open a native directory picker; falling back to console input.')
     try:
-        user_input = input('Enter directory path (leave blank to cancel): ').strip()
+        user_input = input(
+            'Enter directory path (leave blank to cancel): ').strip()
     except (EOFError, KeyboardInterrupt):
         return None
 
@@ -686,14 +689,14 @@ def browse_native():
     try:
         print("DEBUG: Opening native directory browser...")
         directory_path = browse_directory_native()
-        
+
         if directory_path:
             print(f"DEBUG: Selected directory: {directory_path}")
             return jsonify({'success': True, 'path': directory_path})
         else:
             print("DEBUG: No directory selected (user cancelled)")
             return jsonify({'success': False, 'error': 'No directory selected'})
-            
+
     except Exception as e:
         print(f"ERROR in browse_native: {str(e)}")
         import traceback
@@ -706,9 +709,8 @@ if __name__ == '__main__':
     Timer(1.5, open_browser).start()
 
     print("🚀 Starting Codebase to Clipboard Web Application...")
-    print("📍 Open your browser to: http://127.0.0.1:5000")
+    print("📍 Open your browser to: http://127.0.0.1:5002")
     print("💡 The application will open automatically in a moment.")
     print("🛑 Press Ctrl+C to stop the server")
 
-    app.run(debug=True, host='127.0.0.1', port=5000, threaded=True)
-
+    app.run(debug=True, host='127.0.0.1', port=5002, threaded=True)

@@ -1217,11 +1217,17 @@ class CodebaseApp {
             const fileItem = this.createTreeItem(fileName, 'file', filePath, false);
             container.appendChild(fileItem);
         });
-    } createTreeItem(name, type, path, hasChildren) {
+    }
+
+    createTreeItem(name, type, path, hasChildren) {
         const item = document.createElement('div');
         item.className = 'tree-item';
         item.dataset.path = path;
         item.dataset.type = type;
+
+        const header = document.createElement('div');
+        header.className = 'tree-item-header';
+        item.appendChild(header);
 
         const toggle = document.createElement('div');
         toggle.className = 'tree-toggle';
@@ -1250,12 +1256,11 @@ class CodebaseApp {
         label.className = 'tree-label';
         label.textContent = name;
 
-        item.appendChild(toggle);
-        item.appendChild(icon);
-        item.appendChild(checkbox);
-        item.appendChild(label);
+        header.appendChild(toggle);
+        header.appendChild(icon);
+        header.appendChild(checkbox);
+        header.appendChild(label);
 
-        // Toggle functionality for folders
         if (hasChildren) {
             toggle.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -1270,6 +1275,7 @@ class CodebaseApp {
 
         return item;
     }
+
 
     toggleTreeItem(item) {
         const toggle = item.querySelector('.tree-toggle i');
