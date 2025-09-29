@@ -8,6 +8,9 @@ import os
 import json
 import time
 import threading
+import platform
+import shutil
+import subprocess
 from pathlib import Path
 from collections import Counter
 from flask import Flask, render_template, request, jsonify
@@ -567,39 +570,119 @@ if __name__ == '__main__':
 
 
 def browse_directory_native():
-    """Open a native file dialog to select a directory using tkinter."""
+    """Open a native directory picker using platform-specific utilities with a console fallback."""
+    system = platform.system()
+    current_dir = os.getcwd()
+
+    def _log_error(tool, message):
+        if message:
+            print(f"{tool} directory selection error: {message}")
+
     try:
-        import tkinter as tk
-        from tkinter import filedialog
-        
-        # Create root window and hide it immediately
-        root = tk.Tk()
-        root.withdraw()  # Hide the main window
-        root.attributes('-topmost', True)  # Bring dialog to front
-        
-        # Use the directory selection dialog
-        directory_path = filedialog.askdirectory(
-            title="Select a Project Directory",
-            mustexist=True
-        )
-        
-        # Clean up the root window
-        root.destroy()
-        
-        # Return the selected path (empty string if cancelled)
-        return directory_path if directory_path else None
-        
-    except ImportError:
-        print("tkinter is not available - cannot open native directory browser")
+        if system == 'Windows':
+            powershell = shutil.which('powershell.exe') or shutil.which('powershell')
+            if powershell:
+                preset_dir = current_dir.replace("'", "''")
+                script = f"""Add-Type -AssemblyName System.Windows.Forms | Out-Null
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = 'Select a Project Directory'
+$dialog.ShowNewFolderButton = $false
+$dialog.SelectedPath = '{preset_dir}'
+if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
+    [Console]::WriteLine($dialog.SelectedPath)
+}}
+""".strip()
+                result = subprocess.run(
+                    [powershell, '-NoProfile', '-Sta', '-Command', script],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    selected_path = result.stdout.strip()
+                    if selected_path:
+                        return selected_path
+                else:
+                    _log_error('PowerShell', result.stderr.strip())
+        elif system == 'Darwin':
+            osascript = shutil.which('osascript')
+            if osascript:
+                escaped_dir = current_dir.replace('"', '\"')
+                script = (
+                    'POSIX path of (choose folder with prompt "Select a Project Directory" '
+                    f'default location POSIX file "{escaped_dir}")'
+                )
+                result = subprocess.run(
+                    [osascript, '-e', script],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    selected_path = result.stdout.strip()
+                    if selected_path:
+                        return selected_path
+                else:
+                    stderr = result.stderr.strip()
+                    if stderr and 'User canceled' not in stderr:
+                        _log_error('osascript', stderr)
+        else:
+            zenity = shutil.which('zenity')
+            if zenity:
+                result = subprocess.run(
+                    [
+                        zenity,
+                        '--file-selection',
+                        '--directory',
+                        '--title=Select a Project Directory',
+                        f'--filename={current_dir}{os.sep}'
+                    ],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    selected_path = result.stdout.strip()
+                    if selected_path:
+                        return selected_path
+                else:
+                    stderr = result.stderr.strip()
+                    if stderr and 'user' not in stderr.lower():
+                        _log_error('zenity', stderr)
+            kdialog = shutil.which('kdialog')
+            if kdialog:
+                result = subprocess.run(
+                    [kdialog, '--getexistingdirectory', current_dir, '--title', 'Select a Project Directory'],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    selected_path = result.stdout.strip()
+                    if selected_path:
+                        return selected_path
+                else:
+                    stderr = result.stderr.strip()
+                    if stderr and 'cancel' not in stderr.lower():
+                        _log_error('kdialog', stderr)
+    except Exception as exc:
+        _log_error('Native picker', str(exc))
+
+    print('Unable to open a native directory picker; falling back to console input.')
+    try:
+        user_input = input('Enter directory path (leave blank to cancel): ').strip()
+    except (EOFError, KeyboardInterrupt):
         return None
-    except Exception as e:
-        print(f"Error opening native directory browser: {e}")
+
+    if not user_input:
         return None
+
+    candidate = Path(user_input).expanduser()
+    if candidate.exists() and candidate.is_dir():
+        return str(candidate.resolve())
+    print(f'Invalid directory provided: {candidate}')
+    return None
 
 
 @app.route('/api/browse-native', methods=['POST'])
 def browse_native():
-    """Handle native directory browsing using tkinter file dialog."""
+    """Handle native directory browsing using platform-specific tooling."""
     try:
         print("DEBUG: Opening native directory browser...")
         directory_path = browse_directory_native()

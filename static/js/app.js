@@ -39,6 +39,7 @@ class CodebaseApp {
         // Directory browser elements (now in main interface)
         this.backBtn = document.getElementById('back-btn');
         this.pathInput = document.getElementById('path-input');
+        this.goBtn = document.getElementById('go-btn');
         this.browseBtn = document.getElementById('browse-btn');
         this.directoryList = document.getElementById('directory-list');
         this.fileCountInfo = document.getElementById('file-count-info');
@@ -55,8 +56,22 @@ class CodebaseApp {
             this.changeProjectBtn.addEventListener('click', () => this.showDirectorySelection());
         }
         this.backBtn.addEventListener('click', () => this.navigateUp());
+        if (this.goBtn) {
+            this.goBtn.addEventListener('click', () => this.navigateToPath());
+        }
         this.browseBtn.addEventListener('click', () => this.openFileBrowser());
         this.selectCurrentDirBtn.addEventListener('click', () => this.selectCurrentDirectory());
+
+        // Path input change detection
+        if (this.pathInput) {
+            this.pathInput.addEventListener('input', () => this.onPathInputChange());
+            this.pathInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.navigateToPath();
+                }
+            });
+            this.pathInput.addEventListener('blur', () => this.onPathInputBlur());
+        }
 
         // File operations
         if (this.processBtn) {
@@ -146,7 +161,13 @@ class CodebaseApp {
             }
 
             this.currentPath = data.current_path;
-            this.pathInput.value = this.currentPath;
+            if (this.pathInput) {
+                this.pathInput.value = this.currentPath;
+                this.pathInput.classList.remove('modified');
+            }
+            if (this.goBtn) {
+                this.goBtn.style.display = 'none';
+            }
             this.backBtn.disabled = !data.parent_path;
 
             this.populateDirectoryList(data.directories);
@@ -191,13 +212,66 @@ class CodebaseApp {
         }
     }
 
+    onPathInputChange() {
+        if (!this.pathInput || !this.goBtn) return;
+
+        const currentValue = this.pathInput.value.trim();
+        const isModified = currentValue !== this.currentPath;
+
+        if (isModified) {
+            this.pathInput.classList.add('modified');
+            this.goBtn.style.display = 'inline-flex';
+        } else {
+            this.pathInput.classList.remove('modified');
+            this.goBtn.style.display = 'none';
+        }
+    }
+
+    onPathInputBlur() {
+        if (!this.pathInput || !this.goBtn) return;
+
+        // If the path wasn't changed, reset to current path
+        const currentValue = this.pathInput.value.trim();
+        if (currentValue === '') {
+            this.pathInput.value = this.currentPath;
+            this.pathInput.classList.remove('modified');
+            this.goBtn.style.display = 'none';
+        }
+    }
+
+    async navigateToPath() {
+        if (!this.pathInput) return;
+
+        const newPath = this.pathInput.value.trim();
+        if (!newPath) {
+            this.showStatus('Please enter a valid path', 'error');
+            return;
+        }
+
+        try {
+            await this.browseDirectory(newPath);
+            if (this.pathInput && this.goBtn) {
+                this.pathInput.classList.remove('modified');
+                this.goBtn.style.display = 'none';
+            }
+        } catch (error) {
+            // browseDirectory already handles error display
+            // Reset input to current path on error
+            if (this.pathInput && this.goBtn) {
+                this.pathInput.value = this.currentPath;
+                this.pathInput.classList.remove('modified');
+                this.goBtn.style.display = 'none';
+            }
+        }
+    }
+
     async openFileBrowser() {
         // First, try the native Python-based directory picker (best option)
         try {
             this.showStatus('Opening native directory browser...', 'info');
             console.log('Attempting to open native file browser...');
-            
-            const response = await fetch('/api/browse-native', { 
+
+            const response = await fetch('/api/browse-native', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -226,7 +300,7 @@ class CodebaseApp {
             try {
                 console.log('Trying File System Access API...');
                 this.showStatus('Opening browser directory picker...', 'info');
-                
+
                 const directoryHandle = await window.showDirectoryPicker({
                     mode: 'read'
                 });
