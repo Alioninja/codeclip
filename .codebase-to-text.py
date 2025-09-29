@@ -276,6 +276,11 @@ class DirectorySelectionDialog(ctk.CTkToplevel):
         self.address_entry.bind("<KeyRelease>", self.on_address_key_release)
         self.address_entry.bind("<FocusIn>", self.on_address_focus_in)
         self.address_entry.bind("<Button-1>", self.on_address_click)
+        self.address_entry.bind("<Tab>", self.on_address_tab)
+        self.address_entry.bind("<Escape>", self.on_address_escape)
+        
+        # Bind global shortcuts
+        self.bind_all("<Control-l>", self.focus_address_bar)
 
         # Go button for navigation
         self.go_btn = ctk.CTkButton(
@@ -498,6 +503,25 @@ class DirectorySelectionDialog(ctk.CTkToplevel):
             self.current_path = self.current_path.parent
             self.populate_directory_list()
 
+    def on_address_escape(self, event=None):
+        """Handle Escape key in address bar."""
+        # Restore original path and lose focus
+        self.address_entry.delete(0, "end")
+        self.address_entry.insert(0, str(self.current_path))
+        self.focus()  # Move focus away from address bar
+
+    def on_address_tab(self, event=None):
+        """Handle Tab key in address bar for autocompletion."""
+        if self.last_suggestion:
+            self.address_entry.delete(0, "end")
+            self.address_entry.insert(0, self.last_suggestion)
+        return "break"  # Prevent default Tab behavior
+
+    def focus_address_bar(self, event=None):
+        """Focus the address bar (Ctrl+L shortcut)."""
+        self.address_entry.focus()
+        self.address_entry.select_range(0, "end")
+
     def on_address_enter(self, event=None):
         """Handle Enter key press in address bar."""
         self.navigate_to_address()
@@ -540,12 +564,14 @@ class DirectorySelectionDialog(ctk.CTkToplevel):
             if partial_path.endswith('/') or partial_path.endswith('\\'):
                 # User is looking for contents of this directory
                 parent_dir = path_obj
+                partial_name = ""
             else:
                 # User is typing a partial path
                 parent_dir = path_obj.parent
                 partial_name = path_obj.name.lower()
             
             if not parent_dir.exists() or not parent_dir.is_dir():
+                self.last_suggestion = ""
                 return
                 
             # Find matching directories
@@ -553,20 +579,36 @@ class DirectorySelectionDialog(ctk.CTkToplevel):
             try:
                 for item in parent_dir.iterdir():
                     if item.is_dir() and not item.name.startswith('.'):
-                        if partial_path.endswith('/') or partial_path.endswith('\\'):
+                        if not partial_name:
+                            # List all directories in the parent
                             matches.append(str(item))
                         elif item.name.lower().startswith(partial_name):
                             matches.append(str(item))
                 
-                # Show first match as suggestion (visual feedback could be added)
+                # Sort matches for consistent behavior
+                matches.sort()
+                
+                # Store first match as suggestion
                 if matches:
                     self.last_suggestion = matches[0]
+                    # Provide visual feedback by changing address bar color slightly
+                    if len(matches) == 1:
+                        # Exact match found
+                        self.address_entry.configure(border_color="green")
+                    else:
+                        # Multiple matches available
+                        self.address_entry.configure(border_color="orange")
+                else:
+                    self.last_suggestion = ""
+                    self.address_entry.configure(border_color="default")
                     
             except PermissionError:
-                pass  # Ignore directories we can't access
+                self.last_suggestion = ""
+                self.address_entry.configure(border_color="red")
                 
         except (OSError, ValueError):
-            pass  # Invalid path, no suggestions
+            self.last_suggestion = ""
+            self.address_entry.configure(border_color="default")
 
     def navigate_to_address(self):
         """Navigate to the path entered in address bar."""
@@ -612,32 +654,33 @@ class DirectorySelectionDialog(ctk.CTkToplevel):
             self.show_error(f"Invalid path or error accessing directory:\n{str(e)}")
 
     def show_error(self, message):
-        """Show error message to user."""
-        # Create a simple error display in the directory list area temporarily
-        for widget in self.directory_list.winfo_children():
-            widget.destroy()
-            
+        """Show error message to user in a non-intrusive way."""
+        # Change address bar color to indicate error temporarily
+        original_fg_color = self.address_entry.cget("fg_color")
+        self.address_entry.configure(fg_color="red")
+        
+        # Show error in a temporary label above directory list
         error_frame = ctk.CTkFrame(self.directory_list)
-        error_frame.pack(fill="x", padx=10, pady=10)
+        error_frame.pack(fill="x", padx=5, pady=5, side="top")
         
         error_label = ctk.CTkLabel(
             error_frame,
             text=f"❌ {message}",
             text_color="red",
-            font=("Arial", 12),
+            font=("Arial", 11),
             wraplength=500
         )
-        error_label.pack(pady=10)
+        error_label.pack(pady=8)
         
-        # Add a button to go back to the current valid directory
-        back_to_current_btn = ctk.CTkButton(
-            error_frame,
-            text="↶ Return to Current Directory",
-            command=self.populate_directory_list,
-            font=("Arial", 11),
-            width=200
-        )
-        back_to_current_btn.pack(pady=(0, 10))
+        # Auto-remove error after 5 seconds and restore address bar color
+        def clear_error():
+            try:
+                error_frame.destroy()
+                self.address_entry.configure(fg_color=original_fg_color)
+            except:
+                pass  # Widget might already be destroyed
+        
+        self.after(5000, clear_error)
 
     def on_accept(self):
         """Handle accept button click."""
