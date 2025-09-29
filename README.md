@@ -32,7 +32,7 @@ Just paste into your favorite AI chatbot and ask your question!
 - ✅ **Interactive navigation** with clickable folders and back button
 - ✅ **Real-time file counting** and extension detection
 - ✅ **Responsive design** that adapts to window size
-- ✅ **Editable address bar** — type paths directly with smart "Go" button that appears when changes are detected
+- ✅ **Enhanced address bar navigation** — type paths directly with autocomplete, suggestions, and keyboard shortcuts (Ctrl+L to focus, Tab to complete)
 
 ### 🔄 **Project Management**
 - ✅ **Project switching** — change directories anytime with "Change Project" button
@@ -95,7 +95,7 @@ python .codebase-to-text.py
 
 - **🔄 Project Switching**: Use "Change Project" to work with multiple codebases
 - **📁 Smart Navigation**: Click folders or use "↰ Up Directory" button for navigation
-- **⌨️ Quick Path Entry**: Type paths directly in the address bar - a "Go" button automatically appears when you make changes, or press Enter to navigate instantly
+- **⌨️ Smart Address Bar**: Type paths directly with real-time suggestions, Tab completion, and error validation. Use Ctrl+L to focus instantly!
 - **🎯 File Filtering**: Uncheck file types you don't need for focused analysis
 - **📏 Efficient Browsing**: Compact folder items show more directories at once
 - **⚡ Quick Selection**: "Select All" and "Deselect All" buttons for bulk operations
@@ -104,7 +104,9 @@ python .codebase-to-text.py
 
 ### **Directory Selection Dialog**
 - 🚀 Welcome screen with project selection
-- 📍 Address bar with click-to-browse functionality  
+- ⌨️ **Smart editable address bar** with path autocompletion and validation
+- 🎯 **Visual feedback** with color-coded borders (green=valid, orange=suggestions, red=error)
+- ⚡ **Keyboard shortcuts** - Ctrl+L to focus, Tab to complete, Enter to navigate, Esc to reset
 - 🔙 Reliable "Up Directory" navigation
 - 📄 File count display in footer
 - 🎨 Consistent dark theme matching main application
