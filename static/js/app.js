@@ -192,30 +192,48 @@ class CodebaseApp {
     }
 
     async openFileBrowser() {
+        // First, try the native Python-based directory picker (best option)
         try {
-            console.log('Opening native file browser...');
-            const response = await fetch('/api/browse-native', { method: 'POST' });
+            this.showStatus('Opening native directory browser...', 'info');
+            console.log('Attempting to open native file browser...');
+            
+            const response = await fetch('/api/browse-native', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
             const data = await response.json();
             console.log('Native browser response:', data);
 
             if (data.success && data.path) {
+                console.log('Native directory picker succeeded:', data.path);
+                this.showStatus('Directory selected successfully!', 'success');
                 this.currentPath = data.path;
                 this.selectCurrentDirectory();
                 return;
+            } else if (!data.success && data.error) {
+                console.log('Native directory picker failed:', data.error);
+                if (data.error !== 'No directory selected') {
+                    this.showStatus('Native directory picker not available, using browser fallback...', 'warning');
+                }
             }
         } catch (error) {
-            console.log('Native directory picker not available, falling back to browser-based picker.');
+            console.log('Native directory picker error:', error);
+            this.showStatus('Native directory picker not available, using browser fallback...', 'warning');
         }
 
-        // Try modern File System Access API first (Chrome 86+, Edge 86+)
+        // Fallback 1: Try modern File System Access API (Chrome 86+, Edge 86+)
         if ('showDirectoryPicker' in window) {
             try {
+                console.log('Trying File System Access API...');
+                this.showStatus('Opening browser directory picker...', 'info');
+                
                 const directoryHandle = await window.showDirectoryPicker({
                     mode: 'read'
                 });
 
                 // Process the directory directly using the handle
                 const folderName = directoryHandle.name;
+                console.log('File System Access API succeeded:', folderName);
                 this.showStatus('Processing selected folder...', 'info');
                 await this.processDirectoryHandle(directoryHandle);
                 return;
@@ -223,14 +241,18 @@ class CodebaseApp {
             } catch (error) {
                 if (error.name === 'AbortError') {
                     // User cancelled - that's fine
+                    this.showStatus('Directory selection cancelled', 'info');
                     return;
                 } else {
-                    console.log('File System Access API not available, using manual input');
+                    console.log('File System Access API error:', error);
+                    this.showStatus('Browser directory picker failed, trying manual entry...', 'warning');
                 }
             }
         }
 
-        // Fallback: Direct path entry dialog since webkitdirectory shows "Upload" not "Select Folder"
+        // Fallback 2: Manual path entry dialog
+        console.log('Using manual path entry as final fallback');
+        this.showStatus('Please enter the directory path manually', 'info');
         this.showManualPathDialog();
     }
 

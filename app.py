@@ -567,16 +567,31 @@ if __name__ == '__main__':
 
 
 def browse_directory_native():
-    """Open a native file dialog to select a directory."""
+    """Open a native file dialog to select a directory using tkinter."""
     try:
         import tkinter as tk
         from tkinter import filedialog
+        
+        # Create root window and hide it immediately
         root = tk.Tk()
         root.withdraw()  # Hide the main window
+        root.attributes('-topmost', True)  # Bring dialog to front
+        
+        # Use the directory selection dialog
         directory_path = filedialog.askdirectory(
-            title="Select a Project Directory"
+            title="Select a Project Directory",
+            mustexist=True
         )
-        return directory_path
+        
+        # Clean up the root window
+        root.destroy()
+        
+        # Return the selected path (empty string if cancelled)
+        return directory_path if directory_path else None
+        
+    except ImportError:
+        print("tkinter is not available - cannot open native directory browser")
+        return None
     except Exception as e:
         print(f"Error opening native directory browser: {e}")
         return None
@@ -584,16 +599,23 @@ def browse_directory_native():
 
 @app.route('/api/browse-native', methods=['POST'])
 def browse_native():
-    """Handle native directory browsing."""
+    """Handle native directory browsing using tkinter file dialog."""
     try:
+        print("DEBUG: Opening native directory browser...")
         directory_path = browse_directory_native()
+        
         if directory_path:
+            print(f"DEBUG: Selected directory: {directory_path}")
             return jsonify({'success': True, 'path': directory_path})
         else:
+            print("DEBUG: No directory selected (user cancelled)")
             return jsonify({'success': False, 'error': 'No directory selected'})
+            
     except Exception as e:
         print(f"ERROR in browse_native: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':
