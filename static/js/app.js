@@ -10,18 +10,17 @@ class CodebaseApp {
 
         this.initializeElements();
         this.attachEventListeners();
-        this.loadQuickAccess();
+        this.initializeDirectoryBrowser();
     }
 
     initializeElements() {
         // Main elements
-        this.welcomeScreen = document.getElementById('welcome-screen');
+        this.directorySelection = document.getElementById('directory-selection');
         this.appMain = document.getElementById('app-main');
         this.projectInfo = document.getElementById('project-info');
         this.projectName = document.getElementById('project-name');
 
         // Buttons
-        this.selectDirectoryBtn = document.getElementById('select-directory-btn');
         this.changeProjectBtn = document.getElementById('change-project-btn');
         this.processBtn = document.getElementById('process-btn');
         this.selectAllFoldersBtn = document.getElementById('select-all-folders');
@@ -37,18 +36,13 @@ class CodebaseApp {
         this.previewSection = document.getElementById('preview-section');
         this.previewText = document.getElementById('preview-text');
 
-        // Modal elements
-        this.directoryModal = document.getElementById('directory-modal');
-        this.modalTitle = document.getElementById('modal-title');
-        this.modalClose = document.getElementById('modal-close');
-        this.modalCancel = document.getElementById('modal-cancel');
-        this.modalSelect = document.getElementById('modal-select');
+        // Directory browser elements (now in main interface)
         this.backBtn = document.getElementById('back-btn');
         this.pathInput = document.getElementById('path-input');
         this.browseBtn = document.getElementById('browse-btn');
-        this.quickAccess = document.getElementById('quick-access');
         this.directoryList = document.getElementById('directory-list');
         this.fileCountInfo = document.getElementById('file-count-info');
+        this.selectCurrentDirBtn = document.getElementById('select-current-dir');
 
         // Loading
         this.loadingOverlay = document.getElementById('loading-overlay');
@@ -56,90 +50,68 @@ class CodebaseApp {
     }
 
     attachEventListeners() {
-        // Directory selection
-        this.selectDirectoryBtn.addEventListener('click', () => this.showDirectoryModal());
-        this.changeProjectBtn.addEventListener('click', () => this.showDirectoryModal());
-
-        // File operations
-        this.processBtn.addEventListener('click', () => this.processFiles());
-        this.selectAllFoldersBtn.addEventListener('click', () => this.selectAllFolders());
-        this.deselectAllFoldersBtn.addEventListener('click', () => this.deselectAllFolders());
-        this.selectAllTypesBtn.addEventListener('click', () => this.selectAllTypes());
-        this.deselectAllTypesBtn.addEventListener('click', () => this.deselectAllTypes());
-        this.copyToClipboardBtn.addEventListener('click', () => this.copyToClipboard());
-
-        // Modal events
-        this.modalClose.addEventListener('click', () => this.hideDirectoryModal());
-        this.modalCancel.addEventListener('click', () => this.hideDirectoryModal());
-        this.modalSelect.addEventListener('click', () => this.selectCurrentDirectory());
+        // Directory selection - now main interface
+        if (this.changeProjectBtn) {
+            this.changeProjectBtn.addEventListener('click', () => this.showDirectorySelection());
+        }
         this.backBtn.addEventListener('click', () => this.navigateUp());
         this.browseBtn.addEventListener('click', () => this.openFileBrowser());
+        this.selectCurrentDirBtn.addEventListener('click', () => this.selectCurrentDirectory());
 
-        // Close modal on outside click
-        this.directoryModal.addEventListener('click', (e) => {
-            if (e.target === this.directoryModal) {
-                this.hideDirectoryModal();
-            }
-        });
+        // File operations
+        if (this.processBtn) {
+            this.processBtn.addEventListener('click', () => this.processFiles());
+        }
+        if (this.selectAllFoldersBtn) {
+            this.selectAllFoldersBtn.addEventListener('click', () => this.selectAllFolders());
+        }
+        if (this.deselectAllFoldersBtn) {
+            this.deselectAllFoldersBtn.addEventListener('click', () => this.deselectAllFolders());
+        }
+        if (this.selectAllTypesBtn) {
+            this.selectAllTypesBtn.addEventListener('click', () => this.selectAllTypes());
+        }
+        if (this.deselectAllTypesBtn) {
+            this.deselectAllTypesBtn.addEventListener('click', () => this.deselectAllTypes());
+        }
+        if (this.copyToClipboardBtn) {
+            this.copyToClipboardBtn.addEventListener('click', () => this.copyToClipboard());
+        }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter' && !this.processBtn.disabled) {
+            if (e.ctrlKey && e.key === 'Enter' && this.processBtn && !this.processBtn.disabled) {
                 this.processFiles();
-            }
-            if (e.key === 'Escape' && this.directoryModal.classList.contains('show')) {
-                this.hideDirectoryModal();
             }
         });
     }
 
-    async loadQuickAccess() {
+    async initializeDirectoryBrowser() {
+        // Load current directory on startup
         try {
-            const response = await fetch('/api/get-home-directories');
-            const directories = await response.json();
-
-            // Clear existing content to prevent duplicates
-            this.quickAccess.innerHTML = '';
-
-            const quickAccessGrid = document.createElement('div');
-            quickAccessGrid.className = 'quick-access-grid';
-
-            const title = document.createElement('div');
-            title.className = 'quick-access-title';
-            title.textContent = 'Quick Access';
-
-            this.quickAccess.appendChild(title);
-            this.quickAccess.appendChild(quickAccessGrid);
-
-            directories.forEach(dir => {
-                const item = document.createElement('div');
-                item.className = 'quick-access-item';
-                item.innerHTML = `
-                    <i class="fas fa-folder"></i>
-                    <span>${dir.name}</span>
-                `;
-                item.addEventListener('click', () => {
-                    this.currentPath = dir.path;
-                    this.browseDirectory(dir.path);
-                });
-                quickAccessGrid.appendChild(item);
-            });
+            const response = await fetch('/api/get-current-directory');
+            const data = await response.json();
+            if (data.path) {
+                this.currentPath = data.path;
+                this.browseDirectory(this.currentPath);
+            } else {
+                // Fallback to user home directory
+                this.browseDirectory('');
+            }
         } catch (error) {
-            console.error('Failed to load quick access:', error);
+            console.error('Failed to get current directory:', error);
+            this.showStatus('Failed to load directory', 'error');
         }
     }
 
-    showDirectoryModal() {
-        this.directoryModal.classList.add('show');
-        if (!this.currentPath) {
-            this.loadQuickAccess();
-        } else {
+    showDirectorySelection() {
+        this.directorySelection.style.display = 'flex';
+        this.appMain.style.display = 'none';
+        this.projectInfo.style.display = 'none';
+        // Refresh current directory
+        if (this.currentPath) {
             this.browseDirectory(this.currentPath);
         }
-    }
-
-    hideDirectoryModal() {
-        this.directoryModal.classList.remove('show');
     }
 
     showLoading(text = 'Loading...') {
@@ -158,6 +130,7 @@ class CodebaseApp {
 
     async browseDirectory(path) {
         try {
+            console.log('Browsing directory:', path);
             this.showLoading('Loading directory...');
 
             const response = await fetch('/api/browse-directory', {
@@ -218,16 +191,855 @@ class CodebaseApp {
         }
     }
 
-    openFileBrowser() {
-        // For web browsers, this would typically open a file dialog
-        // Since we can't access the file system directly, we'll use the browse directory functionality
-        const path = prompt('Enter directory path:', this.currentPath);
-        if (path) {
-            this.browseDirectory(path);
+    async openFileBrowser() {
+        try {
+            console.log('Opening native file browser...');
+            const response = await fetch('/api/browse-native', { method: 'POST' });
+            const data = await response.json();
+            console.log('Native browser response:', data);
+
+            if (data.success && data.path) {
+                this.currentPath = data.path;
+                this.selectCurrentDirectory();
+                return;
+            }
+        } catch (error) {
+            console.log('Native directory picker not available, falling back to browser-based picker.');
+        }
+
+        // Try modern File System Access API first (Chrome 86+, Edge 86+)
+        if ('showDirectoryPicker' in window) {
+            try {
+                const directoryHandle = await window.showDirectoryPicker({
+                    mode: 'read'
+                });
+
+                // Process the directory directly using the handle
+                const folderName = directoryHandle.name;
+                this.showStatus('Processing selected folder...', 'info');
+                await this.processDirectoryHandle(directoryHandle);
+                return;
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    // User cancelled - that's fine
+                    return;
+                } else {
+                    console.log('File System Access API not available, using manual input');
+                }
+            }
+        }
+
+        // Fallback: Direct path entry dialog since webkitdirectory shows "Upload" not "Select Folder"
+        this.showManualPathDialog();
+    }
+
+    async processDirectoryHandle(directoryHandle) {
+        try {
+            this.showStatus('Reading directory contents...', 'info');
+
+            // Read the directory structure using File System Access API
+            const directoryData = await this.readDirectoryStructure(directoryHandle);
+
+            if (directoryData) {
+                // Send the directory structure to Python for processing
+                this.showStatus('Processing directory structure...', 'info');
+                await this.processDirectoryData(directoryData);
+            } else {
+                throw new Error('Failed to read directory structure');
+            }
+        } catch (error) {
+            console.error('Error processing directory handle:', error);
+            this.showStatus('Error processing selected folder. Falling back to path entry.', 'error');
+            // Fallback to manual dialog
+            this.showModernFolderDialog(directoryHandle.name, directoryHandle);
+        }
+    } async readDirectoryStructure(directoryHandle, maxDepth = 3, currentDepth = 0) {
+        try {
+            const structure = {
+                name: directoryHandle.name,
+                type: 'directory',
+                children: []
+            };
+
+            // Don't read too deep to avoid performance issues
+            if (currentDepth >= maxDepth) {
+                return structure;
+            }
+
+            let fileCount = 0;
+            const maxFiles = 200; // Limit files to avoid browser hanging
+
+            for await (const [name, handle] of directoryHandle.entries()) {
+                if (fileCount >= maxFiles) {
+                    console.log(`Limiting directory scan to ${maxFiles} files for performance`);
+                    break;
+                }
+
+                if (handle.kind === 'file') {
+                    structure.children.push({
+                        name: name,
+                        type: 'file'
+                    });
+                    fileCount++;
+                } else if (handle.kind === 'directory') {
+                    // Recursively read subdirectories (but limit depth)
+                    const subDir = await this.readDirectoryStructure(handle, maxDepth, currentDepth + 1);
+                    structure.children.push(subDir);
+                    fileCount++;
+                }
+            }
+
+            return structure;
+        } catch (error) {
+            console.error('Error reading directory structure:', error);
+            return null;
         }
     }
 
+    async processDirectoryData(directoryData) {
+        try {
+            const response = await fetch('/api/process-directory-structure', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    directoryStructure: directoryData,
+                    rootName: directoryData.name
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    // Update the UI with the processed directory data
+                    this.updateDirectoryView(result);
+                    this.showStatus(`Successfully loaded "${directoryData.name}" project`, 'success');
+                } else {
+                    throw new Error(result.error || 'Failed to process directory');
+                }
+            } else {
+                throw new Error('Server error processing directory');
+            }
+        } catch (error) {
+            console.error('Error processing directory data:', error);
+            this.showStatus('Error processing directory structure', 'error');
+            throw error;
+        }
+    }
+
+    updateDirectoryView(result) {
+        // Update the current project data
+        this.currentProject = {
+            name: result.project_name,
+            path: result.virtual_path || result.project_name,
+            extensions: result.extensions,
+            tree: result.tree
+        };
+
+        // Clear any existing content
+        this.clearResults();
+
+        // Update directory info
+        if (this.directoryInfo) {
+            this.directoryInfo.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                    <i class="fas fa-folder-open" style="color: var(--primary-color);"></i>
+                    <h3 style="margin: 0; color: var(--text-primary);">${result.project_name}</h3>
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Loaded from browser directory selection
+                </div>
+            `;
+            this.directoryInfo.style.display = 'block';
+        }
+
+        // Update extensions checkboxes
+        this.updateExtensionsList(result.extensions);
+
+        // Show the file browser section
+        if (this.fileBrowser) {
+            this.fileBrowser.style.display = 'block';
+        }
+
+        // Enable the generate button
+        if (this.generateBtn) {
+            this.generateBtn.disabled = false;
+            this.generateBtn.textContent = 'Generate Codebase Text';
+        }
+    } async createTempDirectoryInfo(directoryHandle) {
+        try {
+            // Use the new find-directory API to locate the folder
+            const response = await fetch('/api/find-directory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: directoryHandle.name })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.found_paths && data.found_paths.length > 0) {
+                    // Use the first found path
+                    const foundPath = data.found_paths[0];
+                    console.log(`Found directory: ${foundPath}`);
+                    return foundPath;
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error finding directory:', error);
+            return null;
+        }
+    }
+
+    async getCommonDirectories() {
+        try {
+            const response = await fetch('/api/get-common-directories');
+            const data = await response.json();
+            return data.success ? data.directories : [];
+        } catch (error) {
+            // Fallback common directories
+            if (navigator.platform.includes('Win')) {
+                return ['C:\\\\Users\\\\' + (navigator.userAgent.includes('Chrome') ? 'username' : 'user'), 'C:\\\\Projects', 'D:\\\\'];
+            } else if (navigator.platform.includes('Mac')) {
+                return ['/Users/username', '/Applications'];
+            } else {
+                return ['/home/username', '/opt', '/usr/local'];
+            }
+        }
+    }
+
+    showPathSelectionDialog(folderName, foundPaths) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center; z-index: 2002;
+        `;
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+            width: 90%; max-width: 600px; padding: 0; overflow: hidden;
+        `;
+
+        const pathButtons = foundPaths.map((path, index) => `
+            <button class="found-path-btn" data-path="${path}" style="
+                display: block; width: 100%; padding: 1rem; margin-bottom: 0.5rem;
+                background: var(--bg-tertiary); border: 1px solid var(--border-color);
+                border-radius: var(--radius-sm); color: var(--text-primary); text-align: left;
+                cursor: pointer; font-family: monospace; font-size: 0.9rem;
+                transition: all 0.15s ease;
+            ">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fas fa-folder" style="color: var(--primary-color); font-size: 1rem;"></i>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; margin-bottom: 0.25rem;">${path}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">
+                            ${path.split(/[\\/]/).slice(-2).join(' → ')}
+                        </div>
+                    </div>
+                </div>
+            </button>
+        `).join('');
+
+        dialog.innerHTML = `
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: var(--bg-tertiary);">
+                <h3 style="margin: 0; font-size: 1.2rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-search" style="color: var(--success-color);"></i>
+                    Found "${folderName}" in ${foundPaths.length} locations
+                </h3>
+                <p style="margin: 0.5rem 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    Select the correct path to browse:
+                </p>
+            </div>
+            <div style="padding: 1.5rem; max-height: 60vh; overflow-y: auto;">
+                ${pathButtons}
+            </div>
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: var(--bg-tertiary); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button id="cancel-path-selection" class="btn btn-secondary">Cancel</button>
+                <button id="manual-path-entry" class="btn btn-outline">Enter Path Manually</button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        const closeDialog = () => document.body.removeChild(overlay);
+
+        // Handle path selection
+        dialog.querySelectorAll('.found-path-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const path = btn.getAttribute('data-path');
+                this.browseDirectory(path);
+                closeDialog();
+            });
+
+            btn.addEventListener('mouseenter', () => {
+                btn.style.background = 'var(--bg-hover)';
+                btn.style.borderColor = 'var(--primary-color)';
+                btn.style.transform = 'translateY(-2px)';
+            });
+
+            btn.addEventListener('mouseleave', () => {
+                btn.style.background = 'var(--bg-tertiary)';
+                btn.style.borderColor = 'var(--border-color)';
+                btn.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Handle buttons
+        dialog.querySelector('#cancel-path-selection').addEventListener('click', closeDialog);
+        dialog.querySelector('#manual-path-entry').addEventListener('click', () => {
+            closeDialog();
+            this.showModernFolderDialog(folderName, null);
+        });
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeDialog();
+        });
+    }
+
+    async showModernFolderDialog(folderName, directoryHandle) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center; z-index: 2002;
+        `;
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+            width: 90%; max-width: 700px; padding: 0; overflow: hidden;
+        `;
+
+        // Generate better path suggestions based on common locations
+        const generatePathSuggestions = async () => {
+            const suggestions = [];
+
+            // Try to get common directories from backend
+            try {
+                const response = await fetch('/api/get-common-directories');
+                const data = await response.json();
+
+                if (data.success && data.directories) {
+                    // Add folder to each common directory
+                    data.directories.forEach(dir => {
+                        const separator = dir.includes('/') ? '/' : '\\\\';
+                        suggestions.push(dir + separator + folderName);
+                    });
+                }
+            } catch (error) {
+                console.log('Could not fetch common directories, using fallback paths');
+            }
+
+            // Fallback suggestions based on platform
+            if (suggestions.length === 0) {
+                if (navigator.platform.includes('Win')) {
+                    // Windows suggestions
+                    suggestions.push(`C:\\\\Users\\\\username\\\\${folderName}`);
+                    suggestions.push(`C:\\\\Users\\\\username\\\\Documents\\\\${folderName}`);
+                    suggestions.push(`C:\\\\Users\\\\username\\\\Desktop\\\\${folderName}`);
+                    suggestions.push(`C:\\\\Users\\\\username\\\\Downloads\\\\${folderName}`);
+                    suggestions.push(`C:\\\\Projects\\\\${folderName}`);
+                    suggestions.push(`D:\\\\${folderName}`);
+                } else if (navigator.platform.includes('Mac')) {
+                    // macOS suggestions
+                    suggestions.push(`/Users/username/${folderName}`);
+                    suggestions.push(`/Users/username/Documents/${folderName}`);
+                    suggestions.push(`/Users/username/Desktop/${folderName}`);
+                    suggestions.push(`/Users/username/Downloads/${folderName}`);
+                    suggestions.push(`/Applications/${folderName}`);
+                } else {
+                    // Linux suggestions
+                    suggestions.push(`/home/username/${folderName}`);
+                    suggestions.push(`/home/username/Documents/${folderName}`);
+                    suggestions.push(`/home/username/Desktop/${folderName}`);
+                    suggestions.push(`/home/username/Downloads/${folderName}`);
+                    suggestions.push(`/opt/${folderName}`);
+                    suggestions.push(`/usr/local/${folderName}`);
+                }
+            }
+
+            return suggestions;
+        };
+
+        // Generate suggestions asynchronously
+        const pathSuggestions = await generatePathSuggestions();
+        const suggestionsHTML = pathSuggestions.map((path, index) => `
+            <button class="path-suggestion-btn" data-path="${path}" style="
+                display: block; width: 100%; padding: 0.75rem 1rem; margin-bottom: 0.5rem;
+                background: var(--bg-tertiary); border: 1px solid var(--border-color);
+                border-radius: var(--radius-sm); color: var(--text-primary); text-align: left;
+                cursor: pointer; font-family: monospace; font-size: 0.85rem;
+                transition: all 0.15s ease;
+            ">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-folder" style="color: var(--primary-color); font-size: 0.8rem;"></i>
+                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${path}</span>
+                </div>
+            </button>
+        `).join('');
+
+        dialog.innerHTML = `
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: var(--bg-tertiary);">
+                <h3 style="margin: 0; font-size: 1.2rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-check-circle" style="color: var(--success-color);"></i>
+                    Folder "${folderName}" Selected
+                </h3>
+                <p style="margin: 0.5rem 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    Click a suggested path or enter the full path manually
+                </p>
+            </div>
+            <div style="padding: 1.5rem; max-height: 60vh; overflow-y: auto;">
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="margin: 0 0 1rem 0; color: var(--text-primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-lightbulb" style="color: var(--warning-color);"></i>
+                        Common Path Suggestions:
+                    </h4>
+                    <div style="max-height: 250px; overflow-y: auto;">
+                        ${suggestionsHTML}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 500;">
+                        Or enter the full path manually:
+                    </label>
+                    <input type="text" id="modern-folder-path" 
+                           placeholder="Enter full system path to ${folderName}..."
+                           value="${this.currentPath || ''}"
+                           style="width: 100%; padding: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">
+                </div>
+                
+                <div style="display: flex; align-items: flex-start; gap: 0.5rem; color: var(--text-muted); font-size: 0.8rem; line-height: 1.4; padding: 1rem; background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <i class="fas fa-info-circle" style="color: var(--primary-color); margin-top: 0.1rem;"></i>
+                    <div>
+                        <strong>Why is this needed?</strong> For security, browsers can't reveal full file paths. 
+                        Try the suggested paths above, or copy the full path from your file manager 
+                        (Windows: Shift+Right-click folder → "Copy as path").
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: var(--bg-tertiary); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button id="cancel-modern" class="btn btn-secondary">Cancel</button>
+                <button id="browse-modern" class="btn btn-primary">
+                    <i class="fas fa-folder-open"></i> Browse This Folder
+                </button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        const pathInput = dialog.querySelector('#modern-folder-path');
+        const cancelBtn = dialog.querySelector('#cancel-modern');
+        const browseBtn = dialog.querySelector('#browse-modern');
+        const suggestionBtns = dialog.querySelectorAll('.path-suggestion-btn');
+
+        // Handle path suggestion clicks
+        suggestionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const path = btn.getAttribute('data-path');
+                pathInput.value = path;
+                pathInput.focus();
+                pathInput.style.borderColor = 'var(--success-color)';
+                setTimeout(() => {
+                    pathInput.style.borderColor = 'var(--border-color)';
+                }, 1500);
+            });
+
+            btn.addEventListener('mouseenter', () => {
+                btn.style.background = 'var(--bg-hover)';
+                btn.style.borderColor = 'var(--border-hover)';
+            });
+
+            btn.addEventListener('mouseleave', () => {
+                btn.style.background = 'var(--bg-tertiary)';
+                btn.style.borderColor = 'var(--border-color)';
+            });
+        });
+
+        const closeDialog = () => document.body.removeChild(overlay);
+
+        const browsePath = () => {
+            const path = pathInput.value.trim();
+            if (path) {
+                this.browseDirectory(path);
+                closeDialog();
+            } else {
+                pathInput.focus();
+                pathInput.style.borderColor = 'var(--danger-color)';
+                this.showStatus('Please enter a path or click a suggestion above', 'error');
+                setTimeout(() => {
+                    pathInput.style.borderColor = 'var(--border-color)';
+                }, 2000);
+            }
+        };
+
+        cancelBtn.addEventListener('click', closeDialog);
+        browseBtn.addEventListener('click', browsePath);
+
+        pathInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') browsePath();
+        });
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeDialog();
+        });
+
+        // Auto-focus and pre-fill with best guess
+        setTimeout(() => {
+            if (!pathInput.value && pathSuggestions.length > 0) {
+                // Use the first suggestion as default
+                pathInput.value = pathSuggestions[0];
+            }
+            pathInput.focus();
+            pathInput.select();
+        }, 100);
+    } showManualPathDialog() {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center; z-index: 2002;
+        `;
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+            width: 90%; max-width: 600px; padding: 0; overflow: hidden;
+        `;
+
+        dialog.innerHTML = `
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: var(--bg-tertiary);">
+                <h3 style="margin: 0; font-size: 1.2rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-folder-open" style="color: var(--primary-color);"></i>
+                    Enter Directory Path
+                </h3>
+                <p style="margin: 0.5rem 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    Your browser doesn't support direct folder selection. Please enter the path manually.
+                </p>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 500;">
+                        Directory Path:
+                    </label>
+                    <input type="text" id="manual-path-input" 
+                           placeholder="Enter full directory path..."
+                           value="${this.currentPath || ''}"
+                           style="width: 100%; padding: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: monospace; font-size: 0.9rem; margin-bottom: 1rem;">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; margin-bottom: 1rem;">
+                    <div style="padding: 0.75rem; background: var(--bg-tertiary); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 0.25rem;">Windows:</div>
+                        <div style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">C:\\\\Users\\\\YourName\\\\Documents</div>
+                    </div>
+                    <div style="padding: 0.75rem; background: var(--bg-tertiary); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 0.25rem;">Mac:</div>
+                        <div style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">/Users/username/Documents</div>
+                    </div>
+                    <div style="padding: 0.75rem; background: var(--bg-tertiary); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 0.25rem;">Linux:</div>
+                        <div style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">/home/username/projects</div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; align-items: flex-start; gap: 0.5rem; color: var(--text-muted); font-size: 0.8rem; line-height: 1.4;">
+                    <i class="fas fa-lightbulb" style="color: var(--warning-color); margin-top: 0.1rem;"></i>
+                    <div>
+                        <strong>Tip:</strong> You can copy and paste the full path from your file manager. 
+                        On Windows: Shift+Right-click a folder → "Copy as path"
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: var(--bg-tertiary); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button id="cancel-manual" class="btn btn-secondary">Cancel</button>
+                <button id="browse-manual" class="btn btn-primary">
+                    <i class="fas fa-folder-open"></i> Browse Directory
+                </button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        const pathInput = dialog.querySelector('#manual-path-input');
+        const cancelBtn = dialog.querySelector('#cancel-manual');
+        const browseBtn = dialog.querySelector('#browse-manual');
+
+        const closeDialog = () => document.body.removeChild(overlay);
+
+        const browsePath = () => {
+            const path = pathInput.value.trim();
+            if (path) {
+                this.browseDirectory(path);
+                closeDialog();
+            } else {
+                pathInput.focus();
+                pathInput.style.borderColor = 'var(--danger-color)';
+                setTimeout(() => {
+                    pathInput.style.borderColor = 'var(--border-color)';
+                }, 2000);
+            }
+        };
+
+        cancelBtn.addEventListener('click', closeDialog);
+        browseBtn.addEventListener('click', browsePath);
+
+        pathInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') browsePath();
+        });
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeDialog();
+        });
+
+        setTimeout(() => {
+            pathInput.focus();
+            pathInput.select();
+        }, 100);
+    }
+
+    openFolderPicker() {
+        // Create file input with webkitdirectory for folder selection
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.webkitdirectory = true;  // This makes it select folders instead of files
+        input.multiple = true;
+        input.style.display = 'none';
+
+        input.addEventListener('change', (event) => {
+            const files = event.target.files;
+            if (files.length > 0) {
+                // Get directory path from the selected files
+                const firstFile = files[0];
+                const relativePath = firstFile.webkitRelativePath;
+
+                if (relativePath) {
+                    // Extract the directory path
+                    const pathParts = relativePath.split('/');
+                    pathParts.pop(); // Remove the filename
+
+                    // Ask user for the full system path
+                    const dirName = pathParts.join('/');
+                    this.showFolderPathDialog(dirName, firstFile);
+                } else {
+                    this.showStatus('Could not determine folder path. Please enter path manually.', 'warning');
+                    this.pathInput.focus();
+                }
+            }
+            document.body.removeChild(input);
+        });
+
+        document.body.appendChild(input);
+        input.click();
+    }
+
+    showFolderPathDialog(selectedFolder, sampleFile) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center; z-index: 2002;
+        `;
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+            width: 90%; max-width: 600px; padding: 0; overflow: hidden;
+        `;
+
+        dialog.innerHTML = `
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: var(--bg-tertiary);">
+                <h3 style="margin: 0; font-size: 1.2rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-folder-open" style="color: var(--primary-color);"></i>
+                    Folder Selected
+                </h3>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">Selected folder:</div>
+                    <div style="color: var(--text-primary); font-weight: 500; font-family: monospace;">${selectedFolder}</div>
+                    <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.5rem;">Sample file: ${sampleFile.name}</div>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 500;">
+                        Enter the full system path to this folder:
+                    </label>
+                    <input type="text" id="folder-path-input" 
+                           placeholder="e.g., C:\\Users\\YourName\\Projects\\${selectedFolder.split('/').pop()} or /home/user/projects/${selectedFolder.split('/').pop()}"
+                           value="${this.currentPath || ''}"
+                           style="width: 100%; padding: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">
+                </div>
+                
+                <div style="display: flex; align-items: flex-start; gap: 0.5rem; color: var(--text-muted); font-size: 0.8rem; line-height: 1.4;">
+                    <i class="fas fa-info-circle" style="color: var(--primary-color); margin-top: 0.1rem;"></i>
+                    <div>
+                        Due to browser security, we can't get the full path automatically. 
+                        Please enter the complete path where this "${selectedFolder}" folder is located on your system.
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: var(--bg-tertiary); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button id="cancel-folder" class="btn btn-secondary">Cancel</button>
+                <button id="browse-folder" class="btn btn-primary">
+                    <i class="fas fa-check"></i> Browse This Folder
+                </button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        const pathInput = dialog.querySelector('#folder-path-input');
+        const cancelBtn = dialog.querySelector('#cancel-folder');
+        const browseBtn = dialog.querySelector('#browse-folder');
+
+        const closeDialog = () => document.body.removeChild(overlay);
+
+        const browsePath = () => {
+            const path = pathInput.value.trim();
+            if (path) {
+                this.browseDirectory(path);
+                closeDialog();
+            } else {
+                pathInput.focus();
+                pathInput.style.borderColor = 'var(--danger-color)';
+                setTimeout(() => {
+                    pathInput.style.borderColor = 'var(--border-color)';
+                }, 2000);
+            }
+        };
+
+        cancelBtn.addEventListener('click', closeDialog);
+        browseBtn.addEventListener('click', browsePath);
+
+        pathInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') browsePath();
+        });
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeDialog();
+        });
+
+        // Focus and try to suggest a path
+        setTimeout(() => {
+            pathInput.focus();
+            pathInput.select();
+
+            // Try to pre-fill with a reasonable guess
+            if (!pathInput.value) {
+                const folderName = selectedFolder.split('/').pop();
+                if (navigator.platform.includes('Win')) {
+                    pathInput.value = `C:\\Users\\${navigator.userAgent.includes('Windows') ? 'YourName' : 'User'}\\${folderName}`;
+                } else {
+                    pathInput.value = `/home/user/${folderName}`;
+                }
+            }
+        }, 100);
+    }
+
     async selectCurrentDirectory() {
+        // Create a simple, clean dialog for path entry
+        const currentPath = this.currentPath || '';
+
+        // Create modal-like overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2001;
+        `;
+
+        // Create dialog
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            width: 90%;
+            max-width: 500px;
+            padding: 0;
+            overflow: hidden;
+        `;
+
+        dialog.innerHTML = `
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: var(--bg-tertiary);">
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 500; color: var(--text-primary);">Enter Directory Path</h3>
+            </div>
+            <div style="padding: 1.5rem;">
+                <label style="display: block; color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">Directory Path:</label>
+                <input type="text" id="path-input-dialog" value="${currentPath}" placeholder="Enter full directory path..."
+                       style="width: 100%; padding: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.9rem; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: flex-start; gap: 0.5rem; color: var(--text-muted); font-size: 0.8rem; line-height: 1.4;">
+                    <i class="fas fa-info-circle" style="color: var(--primary-color); margin-top: 0.1rem;"></i>
+                    <span>Enter the full path to the directory (e.g., C:\\\\Users\\\\YourName\\\\Documents on Windows or /home/username/Documents on Linux/Mac)</span>
+                </div>
+            </div>
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: var(--bg-tertiary); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button id="cancel-path" class="btn btn-secondary">Cancel</button>
+                <button id="browse-path" class="btn btn-primary">Browse Directory</button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        const input = dialog.querySelector('#path-input-dialog');
+        const cancelBtn = dialog.querySelector('#cancel-path');
+        const browseBtn = dialog.querySelector('#browse-path');
+
+        const closeDialog = () => {
+            document.body.removeChild(overlay);
+        };
+
+        const browse = () => {
+            const path = input.value.trim();
+            if (path) {
+                this.browseDirectory(path);
+                closeDialog();
+            }
+        };
+
+        cancelBtn.addEventListener('click', closeDialog);
+        browseBtn.addEventListener('click', browse);
+
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                browse();
+            }
+        });
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeDialog();
+            }
+        });
+
+        // Focus and select input
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 100);
+    } async selectCurrentDirectory() {
         if (!this.currentPath) {
             this.showStatus('Please select a directory', 'error');
             return;
@@ -259,11 +1071,11 @@ class CodebaseApp {
             console.log('Populating file types with:', data.extensions);
             this.populateFileTypes(data.extensions);
 
-            this.welcomeScreen.style.display = 'none';
+            // Switch to main app interface
+            this.directorySelection.style.display = 'none';
             this.appMain.style.display = 'grid';
             this.projectInfo.style.display = 'flex';
 
-            this.hideDirectoryModal();
             this.showStatus(`Loaded project: ${data.project_name}`, 'success');
 
             // Auto-select all initially

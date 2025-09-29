@@ -115,40 +115,49 @@ body {
     width: 100%;
 }
 
-/* Welcome Screen */
-.welcome-screen {
+/* Directory Selection Screen */
+.directory-selection {
     display: flex;
     justify-content: center;
-    align-items: center;
-    min-height: 60vh;
+    align-items: flex-start;
+    padding: 2rem 0;
+    min-height: 70vh;
 }
 
-.welcome-card {
+.directory-selection-card {
     background-color: var(--bg-card);
-    padding: 3rem;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
-    text-align: center;
-    max-width: 500px;
     border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 800px;
 }
 
-.welcome-icon {
-    font-size: 4rem;
+.directory-selection-header {
+    text-align: center;
+    padding: 2rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.selection-icon {
+    font-size: 3rem;
     color: var(--primary-color);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
-.welcome-card h2 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
+.directory-selection-header h2 {
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
     color: var(--text-primary);
 }
 
-.welcome-card p {
+.directory-selection-header p {
     color: var(--text-secondary);
-    margin-bottom: 2rem;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    margin: 0;
 }
 
 /* Main App Layout */
@@ -428,6 +437,119 @@ body {
     border-color: var(--primary-color);
 }
 
+/* Directory Selection Screen */
+.directory-selection {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2rem 0;
+    min-height: 70vh;
+}
+
+.directory-selection-card {
+    background-color: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 800px;
+}
+
+.directory-selection-header {
+    text-align: center;
+    padding: 2rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.selection-icon {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.directory-selection-header h2 {
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.directory-selection-header p {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* Directory Browser - Updated for main interface */
+.directory-browser {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    min-height: 500px;
+}
+
+.browser-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.current-path {
+    flex: 1;
+    display: flex;
+    gap: 0.5rem;
+    min-width: 200px;
+}
+
+.current-path input {
+    flex: 1;
+    padding: 0.5rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    min-width: 0;
+}
+
+.directory-list {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-primary);
+    min-height: 300px;
+    margin-bottom: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) var(--bg-primary);
+}
+
+.directory-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    margin: 0 -1.5rem -1.5rem -1.5rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.directory-info {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.directory-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
 /* Modal */
 .modal {
     display: none;
@@ -472,7 +594,7 @@ body {
 
 .modal-header h3 {
     font-size: 1.25rem;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-primary);
 }
 
@@ -521,8 +643,8 @@ body {
 .directory-browser {
     display: flex;
     flex-direction: column;
-    height: 500px;
-    min-height: 400px;
+    padding: 1.5rem;
+    min-height: 500px;
 }
 
 .browser-toolbar {
@@ -551,8 +673,43 @@ body {
     min-width: 0;
 }
 
+.directory-list {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-primary);
+    min-height: 300px;
+    margin-bottom: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) var(--bg-primary);
+}
+
+.directory-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    margin: 0 -1.5rem -1.5rem -1.5rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.directory-info {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.directory-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
 .quick-access {
     margin-bottom: 1rem;
+    display: none;
 }
 
 .quick-access-title {
@@ -669,6 +826,185 @@ body {
 .loading-spinner p {
     color: var(--text-secondary);
     font-size: 1rem;
+}
+
+/* Path Dialog */
+.path-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2001;
+    backdrop-filter: blur(4px);
+}
+
+.path-dialog {
+    background-color: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    min-width: 400px;
+    max-width: 600px;
+    width: 90%;
+}
+
+.path-dialog-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.path-dialog-header h4 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.path-dialog-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+}
+
+.path-dialog-close:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.path-dialog-body {
+    padding: 1.5rem;
+}
+
+.path-dialog-body label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.path-dialog-body input {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.path-dialog-body input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.path-dialog-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.path-dialog-hint i {
+    color: var(--primary-color);
+    margin-top: 0.1rem;
+}
+
+.path-dialog-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    background-color: var(--bg-tertiary);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* Found path dialog styles */
+.found-path-btn {
+    display: block !important;
+    width: 100% !important;
+    padding: 1rem !important;
+    margin-bottom: 0.5rem !important;
+    background: var(--bg-tertiary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    font-family: monospace !important;
+    font-size: 0.9rem !important;
+    transition: all 0.15s ease !important;
+}
+
+.found-path-btn:hover {
+    background: var(--bg-hover) !important;
+    border-color: var(--primary-color) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.found-path-btn:active {
+    transform: translateY(0) !important;
+    background: var(--primary-color-dark) !important;
+}
+
+/* Modern folder dialog styles */
+.path-suggestion-btn {
+    display: block !important;
+    width: 100% !important;
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 0.5rem !important;
+    background: var(--bg-tertiary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    font-family: monospace !important;
+    font-size: 0.85rem !important;
+    transition: all 0.15s ease !important;
+}
+
+.path-suggestion-btn:hover {
+    background: var(--bg-hover) !important;
+    border-color: var(--border-hover) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.path-suggestion-btn:active {
+    transform: translateY(0);
+    background: var(--primary-color-dark) !important;
+}
+
+.path-suggestion-btn i {
+    color: var(--primary-color) !important;
+    font-size: 0.8rem !important;
+}
+
+.path-suggestion-btn span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Scrollbars */

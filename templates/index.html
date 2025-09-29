@@ -32,18 +32,45 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Welcome Screen -->
-            <div class="welcome-screen" id="welcome-screen">
-                <div class="welcome-card">
-                    <div class="welcome-icon">
-                        <i class="fas fa-rocket"></i>
+            <!-- Directory Selection (Main Screen) -->
+            <div class="directory-selection" id="directory-selection">
+                <div class="directory-selection-card">
+                    <div class="directory-selection-header">
+                        <div class="selection-icon">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <h2>Select Project Directory</h2>
+                        <p>Choose the directory containing your project files</p>
                     </div>
-                    <h2>Welcome to Codebase to Clipboard</h2>
-                    <p>Select your project directory to get started</p>
-                    <button class="btn btn-primary btn-large" id="select-directory-btn">
-                        <i class="fas fa-folder-open"></i>
-                        Select Project Directory
-                    </button>
+
+                    <div class="directory-browser">
+                        <div class="browser-toolbar">
+                            <button class="btn btn-sm" id="back-btn" disabled>
+                                <i class="fas fa-arrow-left"></i> Up Directory
+                            </button>
+                            <div class="current-path">
+                                <input type="text" id="path-input" readonly>
+                                <button class="btn btn-sm btn-primary" id="browse-btn">
+                                    <i class="fas fa-folder-open"></i> Browse
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="directory-list" id="directory-list">
+                            <!-- Directory listing -->
+                        </div>
+
+                        <div class="directory-actions">
+                            <div class="directory-info">
+                                <span id="file-count-info"></span>
+                            </div>
+                            <div class="directory-buttons">
+                                <button class="btn btn-primary btn-large" id="select-current-dir">
+                                    <i class="fas fa-check"></i> Select This Directory
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -105,46 +132,6 @@
                 </div>
             </div>
         </main>
-    </div>
-
-    <!-- Directory Browser Modal -->
-    <div class="modal" id="directory-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modal-title">Select Project Directory</h3>
-                <button class="btn-close" id="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="directory-browser">
-                    <div class="browser-toolbar">
-                        <button class="btn btn-sm" id="back-btn" disabled>
-                            <i class="fas fa-arrow-left"></i> Up Directory
-                        </button>
-                        <div class="current-path">
-                            <input type="text" id="path-input" readonly>
-                            <button class="btn btn-sm" id="browse-btn">Browse</button>
-                        </div>
-                    </div>
-                    <div class="quick-access" id="quick-access">
-                        <!-- Quick access directories -->
-                    </div>
-                    <div class="directory-list" id="directory-list">
-                        <!-- Directory listing -->
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <div class="modal-info">
-                    <span id="file-count-info"></span>
-                </div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
-                    <button class="btn btn-primary" id="modal-select">
-                        <i class="fas fa-check"></i> Select This Directory
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Loading Overlay -->
