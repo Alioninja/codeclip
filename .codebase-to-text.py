@@ -245,7 +245,7 @@ class DirectorySelectionDialog(ctk.CTkToplevel):
         """Create the address bar section."""
         address_frame = ctk.CTkFrame(parent)
         address_frame.grid(row=1, column=0, sticky="ew", pady=(0, 15))
-        # Address entry column (now column 1)
+        # Address entry column (column 1) gets most space
         address_frame.grid_columnconfigure(1, weight=1)
 
         # Back button with secondary color and clearer text
@@ -261,31 +261,38 @@ class DirectorySelectionDialog(ctk.CTkToplevel):
         )
         self.back_btn.grid(row=0, column=0, padx=(15, 10), pady=15)
 
-        # Read-only address bar (clickable to browse) - no location label needed
+        # Editable address bar with path suggestions and validation
         self.address_entry = ctk.CTkEntry(
             address_frame,
-            placeholder_text="Click to browse directories...",
+            placeholder_text="Enter directory path or start typing...",
             height=35,
-            font=("Consolas", 11),
-            state="readonly"
+            font=("Consolas", 11)
         )
         self.address_entry.grid(
             row=0, column=1, padx=(0, 10), pady=15, sticky="ew")
 
-        # Make address bar clickable to browse
-        self.address_entry.bind(
-            "<Button-1>", lambda e: self.browse_directory())
-        self.address_entry.bind("<Return>", lambda e: self.browse_directory())
+        # Bind events for address bar functionality
+        self.address_entry.bind("<Return>", self.on_address_enter)
+        self.address_entry.bind("<KeyRelease>", self.on_address_key_release)
+        self.address_entry.bind("<FocusIn>", self.on_address_focus_in)
+        self.address_entry.bind("<Button-1>", self.on_address_click)
 
-        # Browse button (keeping for clarity but address bar is now clickable)
-        browse_btn = ctk.CTkButton(
+        # Go button for navigation
+        self.go_btn = ctk.CTkButton(
             address_frame,
-            text="Browse",
-            width=80,
+            text="Go",
+            width=60,
             height=35,
-            command=self.browse_directory
+            command=self.navigate_to_address,
+            font=("Arial", 11),
+            fg_color=("green", "darkgreen"),
+            hover_color=("lightgreen", "green")
         )
-        browse_btn.grid(row=0, column=2, padx=(0, 15), pady=15)
+        self.go_btn.grid(row=0, column=2, padx=(0, 15), pady=15)
+
+        # Initialize suggestion tracking
+        self.suggestion_var = None
+        self.last_suggestion = ""
 
     def create_directory_listing(self, parent):
         """Create the directory listing section."""
@@ -360,11 +367,9 @@ class DirectorySelectionDialog(ctk.CTkToplevel):
         if hasattr(self.directory_list, '_parent_canvas'):
             self.directory_list._parent_canvas.yview_moveto(0)
 
-        # Update address bar (temporarily enable to update, then disable)
-        self.address_entry.configure(state="normal")
+        # Update address bar with current path
         self.address_entry.delete(0, "end")
         self.address_entry.insert(0, str(self.current_path))
-        self.address_entry.configure(state="readonly")
 
         # Force update before scanning directory
         self.update_idletasks()
@@ -492,6 +497,147 @@ class DirectorySelectionDialog(ctk.CTkToplevel):
         if self.current_path.parent != self.current_path:
             self.current_path = self.current_path.parent
             self.populate_directory_list()
+
+    def on_address_enter(self, event=None):
+        """Handle Enter key press in address bar."""
+        self.navigate_to_address()
+
+    def on_address_click(self, event=None):
+        """Handle click on address bar."""
+        # Select all text for easy editing
+        self.address_entry.select_range(0, "end")
+
+    def on_address_focus_in(self, event=None):
+        """Handle focus in address bar."""
+        # Clear placeholder behavior if needed
+        current_text = self.address_entry.get()
+        if not current_text or current_text == "Enter directory path or start typing...":
+            self.address_entry.delete(0, "end")
+
+    def on_address_key_release(self, event=None):
+        """Handle key release in address bar for suggestions."""
+        if not event:
+            return
+            
+        current_text = self.address_entry.get()
+        
+        # Don't provide suggestions for very short input
+        if len(current_text) < 2:
+            return
+            
+        # Skip if it's a navigation key
+        if event.keysym in ['Up', 'Down', 'Left', 'Right', 'Tab', 'Shift_L', 'Shift_R', 'Control_L', 'Control_R']:
+            return
+            
+        # Provide path suggestions
+        self.suggest_path_completion(current_text)
+
+    def suggest_path_completion(self, partial_path):
+        """Suggest path completion based on partial input."""
+        try:
+            path_obj = Path(partial_path)
+            
+            if partial_path.endswith('/') or partial_path.endswith('\\'):
+                # User is looking for contents of this directory
+                parent_dir = path_obj
+            else:
+                # User is typing a partial path
+                parent_dir = path_obj.parent
+                partial_name = path_obj.name.lower()
+            
+            if not parent_dir.exists() or not parent_dir.is_dir():
+                return
+                
+            # Find matching directories
+            matches = []
+            try:
+                for item in parent_dir.iterdir():
+                    if item.is_dir() and not item.name.startswith('.'):
+                        if partial_path.endswith('/') or partial_path.endswith('\\'):
+                            matches.append(str(item))
+                        elif item.name.lower().startswith(partial_name):
+                            matches.append(str(item))
+                
+                # Show first match as suggestion (visual feedback could be added)
+                if matches:
+                    self.last_suggestion = matches[0]
+                    
+            except PermissionError:
+                pass  # Ignore directories we can't access
+                
+        except (OSError, ValueError):
+            pass  # Invalid path, no suggestions
+
+    def navigate_to_address(self):
+        """Navigate to the path entered in address bar."""
+        path_text = self.address_entry.get().strip()
+        
+        if not path_text:
+            self.show_error("Please enter a directory path.")
+            return
+            
+        try:
+            # Handle relative paths and expand user paths
+            if path_text.startswith('~'):
+                path_text = Path.home() / path_text[2:] if len(path_text) > 1 else Path.home()
+            elif not Path(path_text).is_absolute():
+                path_text = self.current_path / path_text
+            else:
+                path_text = Path(path_text)
+            
+            # Resolve any .. or . components
+            path_text = path_text.resolve()
+            
+            # Validate the path
+            if not path_text.exists():
+                self.show_error(f"Path does not exist:\n{path_text}")
+                return
+                
+            if not path_text.is_dir():
+                self.show_error(f"Path is not a directory:\n{path_text}")
+                return
+                
+            # Check if we have read access
+            try:
+                list(path_text.iterdir())
+            except PermissionError:
+                self.show_error(f"Access denied to directory:\n{path_text}")
+                return
+            
+            # Navigate to the valid path
+            self.current_path = path_text
+            self.populate_directory_list()
+            
+        except Exception as e:
+            self.show_error(f"Invalid path or error accessing directory:\n{str(e)}")
+
+    def show_error(self, message):
+        """Show error message to user."""
+        # Create a simple error display in the directory list area temporarily
+        for widget in self.directory_list.winfo_children():
+            widget.destroy()
+            
+        error_frame = ctk.CTkFrame(self.directory_list)
+        error_frame.pack(fill="x", padx=10, pady=10)
+        
+        error_label = ctk.CTkLabel(
+            error_frame,
+            text=f"❌ {message}",
+            text_color="red",
+            font=("Arial", 12),
+            wraplength=500
+        )
+        error_label.pack(pady=10)
+        
+        # Add a button to go back to the current valid directory
+        back_to_current_btn = ctk.CTkButton(
+            error_frame,
+            text="↶ Return to Current Directory",
+            command=self.populate_directory_list,
+            font=("Arial", 11),
+            width=200
+        )
+        back_to_current_btn.pack(pady=(0, 10))
 
     def on_accept(self):
         """Handle accept button click."""
