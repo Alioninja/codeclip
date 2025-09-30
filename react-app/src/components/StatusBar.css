@@ -1,0 +1,73 @@
+.status-message {
+    position: relative;
+    padding: 0.75rem 3rem 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.status-message i:first-child {
+    font-size: 1rem;
+}
+
+.status-message span {
+    flex: 1;
+}
+
+.status-close {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0.25rem;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+}
+
+.status-close:hover {
+    opacity: 1;
+}
+
+.status-message.info {
+    background-color: rgba(37, 99, 235, 0.1);
+    border: 1px solid var(--primary-color);
+    color: var(--text-primary);
+}
+
+.status-message.success {
+    background-color: rgba(5, 150, 105, 0.1);
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+}
+
+.status-message.warning {
+    background-color: rgba(217, 119, 6, 0.1);
+    border: 1px solid var(--warning-color);
+    color: var(--warning-color);
+}
+
+.status-message.error {
+    background-color: rgba(220, 38, 38, 0.1);
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+}
