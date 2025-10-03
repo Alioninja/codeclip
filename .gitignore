@@ -8,6 +8,7 @@ __pycache__/
 dist/
 build/
 *.egg
+*.ipynb
 
 # Virtual Environment
 .venv/
