@@ -1,0 +1,100 @@
+#main-container {
+    height: 100%;
+    background: #1a1a1a;
+}
+
+#left-pane {
+    width: 50%;
+    height: 100%;
+    border-right: solid #7f9825;
+    background: #1a1a1a;
+}
+
+#right-pane {
+    width: 50%;
+    height: 100%;
+    padding: 1;
+    background: #1a1a1a;
+}
+
+.header {
+    background: #7f9825;
+    color: #1a1a1a;
+    padding: 1;
+    text-align: center;
+}
+
+#file-tree {
+    height: 100%;
+    background: #1a1a1a;
+    color: #e4e4e4;
+}
+
+#file-types {
+    height: 50%;
+    background: #1a1a1a;
+    border-top: solid #7f9825;
+    color: #e4e4e4;
+}
+
+#status {
+    padding: 1;
+    text-align: center;
+    background: #9d3810;
+    color: #1a1a1a;
+}
+
+#help-overlay {
+    padding: 1;
+    background: #9d3810;
+    color: #1a1a1a;
+    text-align: center;
+}
+
+#change-dir-prompt {
+    width: 60%;
+    border: solid #9d3810;
+    background: #1a1a1a;
+    padding: 1;
+}
+
+#change-dir-prompt .header {
+    background: #9d3810;
+    color: #1a1a1a;
+}
+
+#change-dir-prompt Input {
+    width: 100%;
+    background: #1a1a1a;
+    color: #e4e4e4;
+    border: solid #5c0303;
+}
+
+#change-dir-prompt Button {
+    background: #5c0303;
+    color: #1a1a1a;
+}
+
+.prompt-text {
+    text-align: left;
+    color: #e4e4e4;
+}
+
+.change-dir-buttons {
+    padding: 1 0;
+}
+
+Tree {
+    background: #1a1a1a;
+    color: #e4e4e4;
+}
+
+Checkbox {
+    background: #1a1a1a;
+    color: #e4e4e4;
+}
+
+Button {
+    background: #9d3810;
+    color: #1a1a1a;
+}
