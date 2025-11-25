@@ -1,51 +1,68 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   CodeClip TUI - btop-inspired dark theme
-   Fully responsive, polished terminal UI
+   CodeClip TUI - Textual Theme-based styling
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   GLOBAL STYLES & THEME COLORS
+   GLOBAL SELECTION/FOCUS STYLES - Consistent across all widgets
    ───────────────────────────────────────────────────────────────────────────── */
-Screen {
-    background: #0a0a0a;
-    color: #c0c0c0;
+
+/* Tree cursor highlight - only show when tree is focused */
+Tree > .tree--cursor {
+    background: transparent;
+    color: $text;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   HEADER
-   ───────────────────────────────────────────────────────────────────────────── */
-Header {
-    background: #0a0a0a;
-    color: #7f9825;
-    text-style: bold;
-    dock: top;
-    height: 1;
-}
-
-Header > .header--highlight {
-    background: #0a0a0a;
-    color: #7f9825;
-}
-
-Header > .header--tall {
-    background: #0a0a0a;
-}
-
-HeaderTitle {
-    color: #7f9825;
+Tree:focus > .tree--cursor {
+    background: $accent;
+    color: $text;
     text-style: bold;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   KEY HELPER BAR (btop-style bottom bar)
-   ───────────────────────────────────────────────────────────────────────────── */
-#key-helper {
-    dock: bottom;
-    height: 1;
-    background: #0a0a0a;
-    color: #505050;
-    padding: 0 1;
-    border-top: solid #1a1a1a;
+Tree > .tree--highlight {
+    background: transparent;
+}
+
+Tree:focus > .tree--highlight {
+    background: $accent 50%;
+}
+
+Tree > .tree--highlight-line {
+    background: transparent;
+}
+
+Tree:focus > .tree--highlight-line {
+    background: $accent 30%;
+}
+
+/* Checkbox focus/hover */
+Checkbox:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
+Checkbox:hover {
+    background: $accent 50%;
+}
+
+Checkbox.-on:focus {
+    background: $accent;
+    color: $text;
+}
+
+/* Button focus/hover */
+Button:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
+Button:hover {
+    background: $accent 70%;
+}
+
+Button.-active {
+    background: $accent;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -55,7 +72,6 @@ HeaderTitle {
     layout: horizontal;
     height: 1fr;
     width: 100%;
-    background: #0a0a0a;
     padding: 0;
 }
 
@@ -66,79 +82,42 @@ HeaderTitle {
     width: 2fr;
     min-width: 40;
     height: 100%;
-    background: #0a0a0a;
-    border: round #303030;
-    margin: 0 0 0 0;
+    border: round $primary;
+    margin: 0 1 0 0;
     padding: 0;
 }
 
 #left-panel:focus-within {
-    border: round #7f9825;
+    border: round $accent;
 }
 
 #left-panel-title-box {
     height: 1;
-    background: #0a0a0a;
     dock: top;
     layout: horizontal;
     padding: 0 1;
 }
 
 #tree-title {
-    color: #7f9825;
+    color: $primary;
     text-style: bold;
-    background: #0a0a0a;
     width: auto;
 }
 
 #tree-stats {
-    color: #606060;
+    color: $text-muted;
     text-align: right;
     width: 1fr;
-    background: #0a0a0a;
 }
 
 #file-tree-container {
     height: 1fr;
-    background: #0a0a0a;
     padding: 0 1;
-    scrollbar-background: #0a0a0a;
-    scrollbar-color: #303030;
-    scrollbar-color-active: #7f9825;
-    scrollbar-color-hover: #505050;
 }
 
 #file-tree {
-    background: #0a0a0a;
-    color: #c0c0c0;
     height: 1fr;
     padding: 0;
-}
-
-#file-tree > .tree--cursor {
-    background: #1a1a1a;
-    color: #e0e0e0;
-    text-style: bold;
-}
-
-#file-tree > .tree--highlight {
-    background: #151515;
-}
-
-#file-tree > .tree--highlight-line {
-    background: #0f0f0f;
-}
-
-#file-tree > .tree--guides {
-    color: #303030;
-}
-
-#file-tree > .tree--guides-hover {
-    color: #404040;
-}
-
-#file-tree > .tree--guides-selected {
-    color: #7f9825;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -149,30 +128,26 @@ HeaderTitle {
     min-width: 28;
     max-width: 40;
     height: 100%;
-    background: #0a0a0a;
     layout: vertical;
-    padding: 0 0 0 1;
+    padding: 0;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   SECTION BOXES (btop-style rounded boxes with titles)
+   SECTION BOXES
    ───────────────────────────────────────────────────────────────────────────── */
 .section-box {
-    background: #0a0a0a;
-    border: round #303030;
-    margin: 0 0 1 0;
-    padding: 0 1 0 1;
+    margin: 0;
+    padding: 0 1;
     height: auto;
 }
 
 .section-title {
-    color: #7f9825;
     text-style: bold;
-    background: #0a0a0a;
+    color: $primary;
     dock: top;
     height: 1;
     padding: 0;
-    margin: 0 0 0 0;
+    margin: 0;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -182,15 +157,16 @@ HeaderTitle {
     height: 1fr;
     min-height: 8;
     max-height: 16;
+    border: round $primary;
+    margin-bottom: 0;
 }
 
 #file-types-section:focus-within {
-    border: round #7f9825;
+    border: round $accent;
 }
 
 #file-types-header {
     height: 1;
-    background: #0a0a0a;
     dock: top;
     layout: horizontal;
     padding: 0;
@@ -202,40 +178,14 @@ HeaderTitle {
 
 #file-types-container {
     height: 1fr;
-    background: #0a0a0a;
     padding: 0;
-    scrollbar-background: #0a0a0a;
-    scrollbar-color: #252525;
-    scrollbar-color-active: #7f9825;
-    scrollbar-color-hover: #404040;
 }
 
 .ext-checkbox {
-    background: #0a0a0a;
-    color: #a0a0a0;
     padding: 0;
     margin: 0;
     border: none;
     height: 1;
-}
-
-.ext-checkbox:hover {
-    background: #151515;
-    color: #c0c0c0;
-}
-
-.ext-checkbox:focus {
-    background: #1a1a1a;
-}
-
-.ext-checkbox > .toggle--button {
-    background: #252525;
-    color: #606060;
-}
-
-.ext-checkbox.-on > .toggle--button {
-    background: #7f9825;
-    color: #0a0a0a;
 }
 
 /* Mini buttons for all/none */
@@ -243,21 +193,9 @@ HeaderTitle {
     width: 3;
     min-width: 3;
     height: 1;
-    background: #1a1a1a;
-    color: #606060;
     border: none;
     padding: 0;
     margin: 0 0 0 1;
-}
-
-.mini-btn:hover {
-    background: #252525;
-    color: #7f9825;
-}
-
-.mini-btn:focus {
-    background: #303030;
-    color: #7f9825;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -266,6 +204,13 @@ HeaderTitle {
 #format-section {
     height: auto;
     min-height: 4;
+    border: round $primary;
+    margin-top: -1;
+    margin-bottom: 0;
+}
+
+#format-section:focus-within {
+    border: round $accent;
 }
 
 #format-selector {
@@ -276,29 +221,18 @@ HeaderTitle {
     margin: 0;
 }
 
-#format-selector:focus {
-    background: #151515;
-}
-
 #format-selector .format-btn {
     width: 1fr;
     height: 1;
     min-width: 5;
-    background: #1a1a1a;
-    color: #606060;
     border: none;
     margin: 0 1 0 0;
     padding: 0;
 }
 
-#format-selector .format-btn:hover {
-    background: #252525;
-    color: #909090;
-}
-
 #format-selector .format-btn.format-active {
-    background: #7f9825;
-    color: #0a0a0a;
+    background: $primary;
+    color: $background;
     text-style: bold;
 }
 
@@ -308,6 +242,13 @@ HeaderTitle {
 #controls-section {
     height: auto;
     min-height: 10;
+    border: round $primary;
+    margin-top: -1;
+    margin-bottom: 0;
+}
+
+#controls-section:focus-within {
+    border: round $accent;
 }
 
 #controls-container {
@@ -323,36 +264,14 @@ HeaderTitle {
 
 .control-btn {
     width: 100%;
-    background: #1a1a1a;
-    color: #a0a0a0;
-    border: none;
     height: 3;
     margin: 0 0 1 0;
 }
 
-.control-btn:hover {
-    background: #252525;
-    color: #c0c0c0;
-}
-
-.control-btn:focus {
-    background: #303030;
-    color: #e0e0e0;
-    text-style: bold;
-}
-
 .control-btn.primary-btn {
-    background: #7f9825;
-    color: #0a0a0a;
+    background: $success;
+    color: $background;
     text-style: bold;
-}
-
-.control-btn.primary-btn:hover {
-    background: #8fa830;
-}
-
-.control-btn.primary-btn:focus {
-    background: #9fb840;
 }
 
 .half-btn {
@@ -371,20 +290,35 @@ HeaderTitle {
     height: auto;
     min-height: 5;
     dock: bottom;
+    border: round $primary;
+    margin-top: -1;
+}
+
+#status-section:focus-within {
+    border: round $accent;
 }
 
 #status-text {
-    color: #7f9825;
-    background: #0a0a0a;
+    color: $success;
     height: 1;
     padding: 0;
 }
 
 #dir-path {
-    color: #505050;
-    background: #0a0a0a;
+    color: $text-muted;
     height: 1;
     padding: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   KEY HELPER BAR
+   ───────────────────────────────────────────────────────────────────────────── */
+#key-helper {
+    dock: bottom;
+    height: 1;
+    color: $text-muted;
+    padding: 0 1;
+    border-top: none;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -392,27 +326,27 @@ HeaderTitle {
    ───────────────────────────────────────────────────────────────────────────── */
 ModalScreen {
     align: center middle;
-    background: rgba(0, 0, 0, 0.85);
+    background: $background 80%;
 }
 
 #change-dir-modal {
     width: 70;
     height: 28;
-    background: #0a0a0a;
-    border: round #7f9825;
+    border: round $primary;
     padding: 1 2;
+    background: $surface;
 }
 
 .modal-title {
     text-align: center;
     text-style: bold;
-    color: #7f9825;
+    color: $primary;
     margin: 0 0 1 0;
     height: 1;
 }
 
 .modal-subtitle {
-    color: #606060;
+    color: $text-muted;
     margin: 0;
     height: 1;
 }
@@ -423,16 +357,8 @@ ModalScreen {
 }
 
 #dir-input {
-    background: #151515;
-    border: tall #303030;
-    color: #c0c0c0;
     height: 3;
     padding: 0 1;
-}
-
-#dir-input:focus {
-    border: tall #7f9825;
-    background: #1a1a1a;
 }
 
 .validation-msg {
@@ -449,41 +375,20 @@ ModalScreen {
 
 .nav-btn {
     margin: 0 1;
-    background: #1a1a1a;
-    color: #a0a0a0;
-    border: none;
     height: 3;
     width: auto;
     min-width: 10;
 }
 
-.nav-btn:hover {
-    background: #252525;
-    color: #c0c0c0;
-}
-
-.nav-btn:focus {
-    background: #303030;
-    color: #e0e0e0;
-}
-
 #folder-explorer-section {
     height: 1fr;
-    border: round #303030;
-    background: #050505;
+    border: round $secondary;
     margin: 0 0 1 0;
     padding: 0 1;
 }
 
 #folder-tree {
-    background: #050505;
-    color: #a0a0a0;
     height: 1fr;
-}
-
-#folder-tree > .tree--cursor {
-    background: #1a1a1a;
-    color: #c0c0c0;
 }
 
 .modal-buttons {
@@ -494,30 +399,6 @@ ModalScreen {
 
 #btn-modal-cancel {
     margin-right: 2;
-    background: #252525;
-    color: #a0a0a0;
-    border: none;
-}
-
-#btn-modal-cancel:hover {
-    background: #303030;
-    color: #c0c0c0;
-}
-
-#btn-modal-confirm {
-    background: #7f9825;
-    color: #0a0a0a;
-    border: none;
-    text-style: bold;
-}
-
-#btn-modal-confirm:hover {
-    background: #8fa830;
-}
-
-#btn-modal-confirm:disabled {
-    background: #252525;
-    color: #505050;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -527,53 +408,35 @@ ModalScreen {
     width: 50;
     height: auto;
     max-height: 24;
-    background: #0a0a0a;
-    border: round #7f9825;
+    border: round $primary;
     padding: 1 2;
 }
 
 .help-title {
     text-align: center;
     text-style: bold;
-    color: #7f9825;
-    border-bottom: solid #252525;
+    color: $primary;
+    border-bottom: solid $surface-lighten-2;
     padding-bottom: 1;
     margin-bottom: 1;
     height: auto;
 }
 
 .help-content {
-    color: #a0a0a0;
     height: auto;
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   SCROLLBARS (Global)
-   ───────────────────────────────────────────────────────────────────────────── */
-VerticalScroll {
-    scrollbar-background: #0a0a0a;
-    scrollbar-color: #252525;
-    scrollbar-color-active: #7f9825;
-    scrollbar-color-hover: #404040;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
    NOTIFICATIONS
    ───────────────────────────────────────────────────────────────────────────── */
-Toast {
-    background: #151515;
-    color: #c0c0c0;
-    border: round #303030;
-}
-
 Toast.-information {
-    border: round #7f9825;
+    border: round $success;
 }
 
 Toast.-warning {
-    border: round #d4a520;
+    border: round $warning;
 }
 
 Toast.-error {
-    border: round #c73030;
+    border: round $error;
 }
