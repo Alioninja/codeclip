@@ -1,100 +1,579 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CodeClip TUI - btop-inspired dark theme
+   Fully responsive, polished terminal UI
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL STYLES & THEME COLORS
+   ───────────────────────────────────────────────────────────────────────────── */
+Screen {
+    background: #0a0a0a;
+    color: #c0c0c0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   HEADER
+   ───────────────────────────────────────────────────────────────────────────── */
+Header {
+    background: #0a0a0a;
+    color: #7f9825;
+    text-style: bold;
+    dock: top;
+    height: 1;
+}
+
+Header > .header--highlight {
+    background: #0a0a0a;
+    color: #7f9825;
+}
+
+Header > .header--tall {
+    background: #0a0a0a;
+}
+
+HeaderTitle {
+    color: #7f9825;
+    text-style: bold;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   KEY HELPER BAR (btop-style bottom bar)
+   ───────────────────────────────────────────────────────────────────────────── */
+#key-helper {
+    dock: bottom;
+    height: 1;
+    background: #0a0a0a;
+    color: #505050;
+    padding: 0 1;
+    border-top: solid #1a1a1a;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MAIN LAYOUT
+   ───────────────────────────────────────────────────────────────────────────── */
 #main-container {
-    height: 100%;
-    background: #1a1a1a;
+    layout: horizontal;
+    height: 1fr;
+    width: 100%;
+    background: #0a0a0a;
+    padding: 0;
 }
 
-#left-pane {
-    width: 50%;
+/* ─────────────────────────────────────────────────────────────────────────────
+   LEFT PANEL - FILE TREE
+   ───────────────────────────────────────────────────────────────────────────── */
+#left-panel {
+    width: 2fr;
+    min-width: 40;
     height: 100%;
-    border-right: solid #7f9825;
-    background: #1a1a1a;
+    background: #0a0a0a;
+    border: round #303030;
+    margin: 0 0 0 0;
+    padding: 0;
 }
 
-#right-pane {
-    width: 50%;
-    height: 100%;
-    padding: 1;
-    background: #1a1a1a;
+#left-panel:focus-within {
+    border: round #7f9825;
 }
 
-.header {
-    background: #7f9825;
-    color: #1a1a1a;
-    padding: 1;
-    text-align: center;
+#left-panel-title-box {
+    height: 1;
+    background: #0a0a0a;
+    dock: top;
+    layout: horizontal;
+    padding: 0 1;
+}
+
+#tree-title {
+    color: #7f9825;
+    text-style: bold;
+    background: #0a0a0a;
+    width: auto;
+}
+
+#tree-stats {
+    color: #606060;
+    text-align: right;
+    width: 1fr;
+    background: #0a0a0a;
+}
+
+#file-tree-container {
+    height: 1fr;
+    background: #0a0a0a;
+    padding: 0 1;
+    scrollbar-background: #0a0a0a;
+    scrollbar-color: #303030;
+    scrollbar-color-active: #7f9825;
+    scrollbar-color-hover: #505050;
 }
 
 #file-tree {
+    background: #0a0a0a;
+    color: #c0c0c0;
+    height: 1fr;
+    padding: 0;
+}
+
+#file-tree > .tree--cursor {
+    background: #1a1a1a;
+    color: #e0e0e0;
+    text-style: bold;
+}
+
+#file-tree > .tree--highlight {
+    background: #151515;
+}
+
+#file-tree > .tree--highlight-line {
+    background: #0f0f0f;
+}
+
+#file-tree > .tree--guides {
+    color: #303030;
+}
+
+#file-tree > .tree--guides-hover {
+    color: #404040;
+}
+
+#file-tree > .tree--guides-selected {
+    color: #7f9825;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RIGHT PANEL - CONTROLS
+   ───────────────────────────────────────────────────────────────────────────── */
+#right-panel {
+    width: 1fr;
+    min-width: 28;
+    max-width: 40;
     height: 100%;
+    background: #0a0a0a;
+    layout: vertical;
+    padding: 0 0 0 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SECTION BOXES (btop-style rounded boxes with titles)
+   ───────────────────────────────────────────────────────────────────────────── */
+.section-box {
+    background: #0a0a0a;
+    border: round #303030;
+    margin: 0 0 1 0;
+    padding: 0 1 0 1;
+    height: auto;
+}
+
+.section-title {
+    color: #7f9825;
+    text-style: bold;
+    background: #0a0a0a;
+    dock: top;
+    height: 1;
+    padding: 0;
+    margin: 0 0 0 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FILE TYPES SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
+#file-types-section {
+    height: 1fr;
+    min-height: 8;
+    max-height: 16;
+}
+
+#file-types-section:focus-within {
+    border: round #7f9825;
+}
+
+#file-types-header {
+    height: 1;
+    background: #0a0a0a;
+    dock: top;
+    layout: horizontal;
+    padding: 0;
+}
+
+#file-types-header .section-title {
+    width: 1fr;
+}
+
+#file-types-container {
+    height: 1fr;
+    background: #0a0a0a;
+    padding: 0;
+    scrollbar-background: #0a0a0a;
+    scrollbar-color: #252525;
+    scrollbar-color-active: #7f9825;
+    scrollbar-color-hover: #404040;
+}
+
+.ext-checkbox {
+    background: #0a0a0a;
+    color: #a0a0a0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    height: 1;
+}
+
+.ext-checkbox:hover {
+    background: #151515;
+    color: #c0c0c0;
+}
+
+.ext-checkbox:focus {
     background: #1a1a1a;
-    color: #e4e4e4;
 }
 
-#file-types {
-    height: 50%;
+.ext-checkbox > .toggle--button {
+    background: #252525;
+    color: #606060;
+}
+
+.ext-checkbox.-on > .toggle--button {
+    background: #7f9825;
+    color: #0a0a0a;
+}
+
+/* Mini buttons for all/none */
+.mini-btn {
+    width: 3;
+    min-width: 3;
+    height: 1;
     background: #1a1a1a;
-    border-top: solid #7f9825;
-    color: #e4e4e4;
+    color: #606060;
+    border: none;
+    padding: 0;
+    margin: 0 0 0 1;
 }
 
-#status {
-    padding: 1;
-    text-align: center;
-    background: #9d3810;
-    color: #1a1a1a;
+.mini-btn:hover {
+    background: #252525;
+    color: #7f9825;
 }
 
-#help-overlay {
-    padding: 1;
-    background: #9d3810;
-    color: #1a1a1a;
-    text-align: center;
+.mini-btn:focus {
+    background: #303030;
+    color: #7f9825;
 }
 
-#change-dir-prompt {
-    width: 60%;
-    border: solid #9d3810;
+/* ─────────────────────────────────────────────────────────────────────────────
+   FORMAT SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
+#format-section {
+    height: auto;
+    min-height: 4;
+}
+
+#format-selector {
+    height: 2;
+    layout: horizontal;
+    align: center middle;
+    padding: 0;
+    margin: 0;
+}
+
+#format-selector:focus {
+    background: #151515;
+}
+
+#format-selector .format-btn {
+    width: 1fr;
+    height: 1;
+    min-width: 5;
     background: #1a1a1a;
-    padding: 1;
+    color: #606060;
+    border: none;
+    margin: 0 1 0 0;
+    padding: 0;
 }
 
-#change-dir-prompt .header {
-    background: #9d3810;
-    color: #1a1a1a;
+#format-selector .format-btn:hover {
+    background: #252525;
+    color: #909090;
 }
 
-#change-dir-prompt Input {
+#format-selector .format-btn.format-active {
+    background: #7f9825;
+    color: #0a0a0a;
+    text-style: bold;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CONTROLS SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
+#controls-section {
+    height: auto;
+    min-height: 10;
+}
+
+#controls-container {
+    layout: vertical;
+    height: auto;
+    padding: 0;
+}
+
+#select-buttons {
+    height: 3;
+    layout: horizontal;
+}
+
+.control-btn {
     width: 100%;
     background: #1a1a1a;
-    color: #e4e4e4;
-    border: solid #5c0303;
+    color: #a0a0a0;
+    border: none;
+    height: 3;
+    margin: 0 0 1 0;
 }
 
-#change-dir-prompt Button {
-    background: #5c0303;
-    color: #1a1a1a;
+.control-btn:hover {
+    background: #252525;
+    color: #c0c0c0;
 }
 
-.prompt-text {
-    text-align: left;
-    color: #e4e4e4;
+.control-btn:focus {
+    background: #303030;
+    color: #e0e0e0;
+    text-style: bold;
 }
 
-.change-dir-buttons {
-    padding: 1 0;
+.control-btn.primary-btn {
+    background: #7f9825;
+    color: #0a0a0a;
+    text-style: bold;
 }
 
-Tree {
+.control-btn.primary-btn:hover {
+    background: #8fa830;
+}
+
+.control-btn.primary-btn:focus {
+    background: #9fb840;
+}
+
+.half-btn {
+    width: 1fr;
+    margin: 0 1 1 0;
+}
+
+.half-btn:last-child {
+    margin-right: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   STATUS SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
+#status-section {
+    height: auto;
+    min-height: 5;
+    dock: bottom;
+}
+
+#status-text {
+    color: #7f9825;
+    background: #0a0a0a;
+    height: 1;
+    padding: 0;
+}
+
+#dir-path {
+    color: #505050;
+    background: #0a0a0a;
+    height: 1;
+    padding: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MODAL SCREENS
+   ───────────────────────────────────────────────────────────────────────────── */
+ModalScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.85);
+}
+
+#change-dir-modal {
+    width: 70;
+    height: 28;
+    background: #0a0a0a;
+    border: round #7f9825;
+    padding: 1 2;
+}
+
+.modal-title {
+    text-align: center;
+    text-style: bold;
+    color: #7f9825;
+    margin: 0 0 1 0;
+    height: 1;
+}
+
+.modal-subtitle {
+    color: #606060;
+    margin: 0;
+    height: 1;
+}
+
+#path-input-section {
+    height: auto;
+    margin: 0 0 1 0;
+}
+
+#dir-input {
+    background: #151515;
+    border: tall #303030;
+    color: #c0c0c0;
+    height: 3;
+    padding: 0 1;
+}
+
+#dir-input:focus {
+    border: tall #7f9825;
     background: #1a1a1a;
-    color: #e4e4e4;
 }
 
-Checkbox {
+.validation-msg {
+    height: 1;
+    margin: 0;
+    padding: 0;
+}
+
+#nav-buttons {
+    height: 3;
+    margin: 0 0 1 0;
+    align: center middle;
+}
+
+.nav-btn {
+    margin: 0 1;
     background: #1a1a1a;
-    color: #e4e4e4;
+    color: #a0a0a0;
+    border: none;
+    height: 3;
+    width: auto;
+    min-width: 10;
 }
 
-Button {
-    background: #9d3810;
-    color: #1a1a1a;
+.nav-btn:hover {
+    background: #252525;
+    color: #c0c0c0;
+}
+
+.nav-btn:focus {
+    background: #303030;
+    color: #e0e0e0;
+}
+
+#folder-explorer-section {
+    height: 1fr;
+    border: round #303030;
+    background: #050505;
+    margin: 0 0 1 0;
+    padding: 0 1;
+}
+
+#folder-tree {
+    background: #050505;
+    color: #a0a0a0;
+    height: 1fr;
+}
+
+#folder-tree > .tree--cursor {
+    background: #1a1a1a;
+    color: #c0c0c0;
+}
+
+.modal-buttons {
+    height: 3;
+    align: center middle;
+    dock: bottom;
+}
+
+#btn-modal-cancel {
+    margin-right: 2;
+    background: #252525;
+    color: #a0a0a0;
+    border: none;
+}
+
+#btn-modal-cancel:hover {
+    background: #303030;
+    color: #c0c0c0;
+}
+
+#btn-modal-confirm {
+    background: #7f9825;
+    color: #0a0a0a;
+    border: none;
+    text-style: bold;
+}
+
+#btn-modal-confirm:hover {
+    background: #8fa830;
+}
+
+#btn-modal-confirm:disabled {
+    background: #252525;
+    color: #505050;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   HELP SCREEN
+   ───────────────────────────────────────────────────────────────────────────── */
+#help-overlay {
+    width: 50;
+    height: auto;
+    max-height: 24;
+    background: #0a0a0a;
+    border: round #7f9825;
+    padding: 1 2;
+}
+
+.help-title {
+    text-align: center;
+    text-style: bold;
+    color: #7f9825;
+    border-bottom: solid #252525;
+    padding-bottom: 1;
+    margin-bottom: 1;
+    height: auto;
+}
+
+.help-content {
+    color: #a0a0a0;
+    height: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SCROLLBARS (Global)
+   ───────────────────────────────────────────────────────────────────────────── */
+VerticalScroll {
+    scrollbar-background: #0a0a0a;
+    scrollbar-color: #252525;
+    scrollbar-color-active: #7f9825;
+    scrollbar-color-hover: #404040;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   NOTIFICATIONS
+   ───────────────────────────────────────────────────────────────────────────── */
+Toast {
+    background: #151515;
+    color: #c0c0c0;
+    border: round #303030;
+}
+
+Toast.-information {
+    border: round #7f9825;
+}
+
+Toast.-warning {
+    border: round #d4a520;
+}
+
+Toast.-error {
+    border: round #c73030;
 }
