@@ -12,14 +12,14 @@ from .core.state import load_state, save_state
 from .core.scanner import scan_file_extensions, build_folder_tree, get_tree_string, walk_tree, node_relative_path, collect_selected_files
 from .core.clipboard import copy_to_clipboard
 from .utils.helpers import get_language
-from .ui.widgets import FormatSelector, KeyHelperBar, NavigationScroll, FileTree, ActionButton
+from .ui.widgets import FormatSelector, KeyHelperBar, NavigationScroll, FileTree, ActionButton, TypeToggle
 from .ui.screens import ChangeDirectoryModal, HelpScreen
 from .ui.formatters import format_output_markdown, format_output_xml, format_output_plain
 
 class CodeClipApp(App):
     """CodeClip - Copy codebase to clipboard."""
     
-    CSS_PATH = "../terminal_app.css"
+    CSS_PATH = "terminal_app.css"
     TITLE = "CodeClip"
     
     BINDINGS = [
@@ -108,7 +108,22 @@ class CodeClipApp(App):
         self.title = f"CodeClip - {self.current_dir.name}"
         self.sub_title = str(self.current_dir)
         self.load_directory()
+        # Schedule focus on file tree after UI is ready
+        self.call_after_refresh(self._initial_focus)
     
+    def _initial_focus(self):
+        """Set initial focus on file tree with cursor positioned."""
+        try:
+            tree = self.query_one("#file-tree", FileTree)
+            tree.focus()
+            # Move cursor to first visible node to ensure arrow keys work
+            if tree.root.children:
+                tree.move_cursor(tree.root.children[0])
+            elif tree.root:
+                tree.move_cursor(tree.root)
+        except Exception:
+            pass
+
     def on_format_selector_format_changed(self, event: FormatSelector.FormatChanged):
         """Handle format changes from FormatSelector."""
         self._output_format = event.format
@@ -163,15 +178,15 @@ class CodeClipApp(App):
         if is_dir:
             # Tri-state for folders: selected, unselected, partial
             if selected == "partial":
-                icon = "[#d4a520]◧[/]"  # Orange half-filled for partial
+                icon = "[#d4a520]⊟[/]"  # Orange horizontal dash for partial
             elif selected:
                 icon = "[#00afff]■[/]"  # Cyan filled for selected
             else:
                 icon = "[#404040]□[/]"  # Dark gray empty for unselected
             return f"{icon} 📁 {name}"
         else:
-            # Binary state for files
-            icon = "[#00afff]●[/]" if selected else "[#404040]○[/]"
+            # Binary state for files - use checkboxes too
+            icon = "[#00afff]■[/]" if selected else "[#404040]□[/]"
             return f"{icon} {name}"
     
     def _refresh_node_label(self, node):
@@ -204,12 +219,12 @@ class CodeClipApp(App):
         # Add checkboxes without IDs to avoid conflicts
         for ext in sorted_exts:
             count = ext_counts[ext]
-            cb = Checkbox(f"{ext} ({count})", value=not saved_exts or ext in saved_exts, 
+            cb = TypeToggle(ext, count, value=not saved_exts or ext in saved_exts, 
                          classes="ext-checkbox", name=ext.lower())
             self._ext_checkboxes.append((ext.lower(), cb))
             container.mount(cb)
     
-    def _get_checkbox_ext(self, cb: Checkbox) -> str:
+    def _get_checkbox_ext(self, cb: TypeToggle) -> str:
         """Get the extension for a checkbox."""
         return cb.name if cb.name else ""
     
@@ -320,7 +335,7 @@ class CodeClipApp(App):
         
         selected_exts = []
         for cb in self.query(".ext-checkbox"):
-            if isinstance(cb, Checkbox) and cb.value:
+            if isinstance(cb, TypeToggle) and cb.value:
                 ext = self._get_checkbox_ext(cb)
                 if ext:
                     selected_exts.append(ext)
@@ -373,6 +388,10 @@ class CodeClipApp(App):
                 if child.data.get("is_dir"):
                     self._propagate_selection(child, selected)
     
+    def on_type_toggle_changed(self, event: TypeToggle.Changed):
+        """Handle type toggle changes."""
+        self._persist_state()
+    
     def on_checkbox_changed(self, event: Checkbox.Changed):
         """Handle checkbox changes."""
         self._persist_state()
@@ -396,15 +415,17 @@ class CodeClipApp(App):
     def _select_all_types(self):
         """Select all file type checkboxes."""
         for cb in self.query(".ext-checkbox"):
-            if isinstance(cb, Checkbox):
+            if isinstance(cb, TypeToggle):
                 cb.value = True
+                cb._refresh_label()
         self._persist_state()
     
     def _deselect_all_types(self):
         """Deselect all file type checkboxes."""
         for cb in self.query(".ext-checkbox"):
-            if isinstance(cb, Checkbox):
+            if isinstance(cb, TypeToggle):
                 cb.value = False
+                cb._refresh_label()
         self._persist_state()
     
     # Section focus order: file-tree -> file-types-container -> format-selector -> btn-generate
@@ -457,6 +478,8 @@ class CodeClipApp(App):
             self.action_toggle_select()
         elif isinstance(focused, Checkbox):
             focused.toggle()
+        elif isinstance(focused, TypeToggle):
+            focused.toggle()
         elif isinstance(focused, Button):
             focused.press()
             
@@ -466,6 +489,8 @@ class CodeClipApp(App):
         if isinstance(focused, Tree):
             self.action_toggle_node_or_select()
         elif isinstance(focused, Checkbox):
+            focused.toggle()
+        elif isinstance(focused, TypeToggle):
             focused.toggle()
         elif isinstance(focused, Button):
             focused.press()
@@ -502,7 +527,7 @@ class CodeClipApp(App):
             # Get selected extensions
             selected_exts = set()
             for cb in self.query(".ext-checkbox"):
-                if isinstance(cb, Checkbox) and cb.value:
+                if isinstance(cb, TypeToggle) and cb.value:
                     ext = self._get_checkbox_ext(cb)
                     if ext:
                         selected_exts.add(ext)

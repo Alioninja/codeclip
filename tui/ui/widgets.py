@@ -10,6 +10,66 @@ from textual.suggester import Suggester
 from textual.binding import Binding
 
 
+class TypeToggle(Static):
+    """A custom toggle widget that looks like the file tree items."""
+    
+    can_focus = True
+    
+    DEFAULT_CSS = """
+    TypeToggle {
+        height: 1;
+        border: none;
+        padding: 0;
+        margin: 0;
+        background: transparent;
+        color: #e0e0e0;
+    }
+    TypeToggle:focus {
+        background: #00afff;
+        color: #101010;
+        text-style: bold;
+    }
+    TypeToggle:hover {
+        background: #005f87;
+    }
+    """
+    
+    class Changed(Message):
+        """Posted when the toggle state changes."""
+        def __init__(self, toggle):
+            self.toggle = toggle
+            super().__init__()
+
+    def __init__(self, label: str, count: int, value: bool = False, name: str | None = None, **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.ext_label = label
+        self.count = count
+        self.value = value
+        
+    def on_mount(self):
+        self._refresh_label()
+
+    def _refresh_label(self):
+        icon = "[#00afff]■[/]" if self.value else "[#404040]□[/]"
+        self.update(f"{icon} {self.ext_label} ({self.count})")
+
+    def toggle(self):
+        self.value = not self.value
+        self._refresh_label()
+        self.post_message(self.Changed(self))
+
+    def on_click(self):
+        self.toggle()
+        
+    def action_toggle(self):
+        self.toggle()
+
+    BINDINGS = [
+        Binding("space", "toggle", "Toggle", show=False),
+        Binding("enter", "toggle", "Toggle", show=False),
+    ]
+
+
 class FormatButton(Button):
     """Button for format selection with left/right navigation."""
     

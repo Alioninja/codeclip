@@ -7,30 +7,30 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* Tree cursor highlight - only show when tree is focused */
-Tree > .tree--cursor {
+Tree>.tree--cursor {
     background: transparent;
     color: $text;
 }
 
-Tree:focus > .tree--cursor {
+Tree:focus>.tree--cursor {
     background: $accent;
     color: $text;
     text-style: bold;
 }
 
-Tree > .tree--highlight {
+Tree>.tree--highlight {
     background: transparent;
 }
 
-Tree:focus > .tree--highlight {
+Tree:focus>.tree--highlight {
     background: $accent 50%;
 }
 
-Tree > .tree--highlight-line {
+Tree>.tree--highlight-line {
     background: transparent;
 }
 
-Tree:focus > .tree--highlight-line {
+Tree:focus>.tree--highlight-line {
     background: $accent 30%;
 }
 
@@ -188,6 +188,9 @@ Button.-active {
     height: 1;
 }
 
+
+
+
 /* Mini buttons for all/none */
 .mini-btn {
     width: 3;
@@ -236,6 +239,18 @@ Button.-active {
     text-style: bold;
 }
 
+#format-selector .format-btn.format-active:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
+#format-selector .format-btn:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    CONTROLS SECTION
    ───────────────────────────────────────────────────────────────────────────── */
@@ -272,6 +287,16 @@ Button.-active {
     background: $success;
     color: $background;
     text-style: bold;
+}
+
+.control-btn.primary-btn:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
+.control-btn.primary-btn:hover {
+    background: $success 80%;
 }
 
 .half-btn {
