@@ -53,23 +53,28 @@ Checkbox.-on:focus {
 /* Button focus/hover */
 Button {
     border: round $primary;
-    background: $background;
+    background: transparent;
+    color: $text;
     height: 3;
 }
 
 Button:focus {
-    background: $accent;
-    color: $text;
+    background: transparent;
+    color: $accent;
     text-style: bold;
-    border: round $accent;
+    border: double $accent;
 }
 
 Button:hover {
-    background: $accent 70%;
+    background: transparent;
+    color: $accent;
+    border: double $accent;
 }
 
 Button.-active {
-    background: $accent;
+    background: transparent;
+    border: round $accent;
+    color: $accent;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -162,8 +167,7 @@ Button.-active {
    ───────────────────────────────────────────────────────────────────────────── */
 #file-types-section {
     height: 1fr;
-    min-height: 8;
-    max-height: 16;
+    min-height: 10;
     border: round $primary;
     margin-bottom: 0;
 }
@@ -224,10 +228,11 @@ Button.-active {
 }
 
 #format-selector {
-    height: 2;
+    height: auto;
+    min-height: 3;
     layout: horizontal;
     align: center middle;
-    padding: 0;
+    padding: 1 0 0 0;
     margin: 0;
 }
 
@@ -237,27 +242,49 @@ Button.-active {
     min-width: 5;
     border: round $primary;
     background: transparent;
+    color: $text;
     margin: 0 1 0 0;
     padding: 0;
 }
 
 #format-selector .format-btn.format-active {
     background: transparent;
-    border: heavy $accent;
+    border: round $accent;
     color: $accent;
     text-style: bold;
 }
 
 #format-selector .format-btn.format-active:focus {
     background: transparent;
-    border: heavy $accent;
+    border: double $accent;
     color: $accent;
     text-style: bold;
 }
 
 #format-selector .format-btn:focus {
     background: transparent;
-    border: round $accent;
+    border: double $accent;
+    color: $accent;
+    text-style: bold;
+}
+
+#format-selector .format-btn:hover {
+    background: transparent;
+    border: double $accent;
+    color: $accent;
+}
+
+#btn-generate {
+    background: transparent;
+    border: round $success;
+    color: $success;
+    text-style: bold;
+}
+
+#btn-generate:hover,
+#btn-generate:focus {
+    background: transparent;
+    border: double $accent;
     color: $accent;
     text-style: bold;
 }
@@ -267,10 +294,10 @@ Button.-active {
    ───────────────────────────────────────────────────────────────────────────── */
 #controls-section {
     height: auto;
-    min-height: 10;
     border: round $primary;
     margin-top: -1;
-    margin-bottom: 0;
+    margin-bottom: 1;
+    padding: 0 1 0 1;
 }
 
 #controls-section:focus-within {
@@ -286,40 +313,48 @@ Button.-active {
 #select-buttons {
     height: 3;
     layout: horizontal;
+    margin-bottom: 0;
 }
 
 .control-btn {
     width: 100%;
     height: 3;
-    margin: 0 0 1 0;
-    background: $background;
+    margin: 0;
+    background: transparent;
     border: round $primary;
+    color: $text;
+}
+
+.control-btn:hover,
+.control-btn:focus {
+    background: transparent;
+    border: double $accent;
+    color: $accent;
+    text-style: bold;
 }
 
 .control-btn.primary-btn {
-    background: $success;
+    background: transparent;
     border: round $success;
-    color: $background;
+    color: $success;
     text-style: bold;
 }
 
+.control-btn.primary-btn:hover,
 .control-btn.primary-btn:focus {
-    background: $accent;
-    color: $text;
+    background: transparent;
+    border: double $accent;
+    color: $accent;
     text-style: bold;
-}
-
-.control-btn.primary-btn:hover {
-    background: $success 80%;
 }
 
 .half-btn {
     width: 1fr;
-    margin: 0 1 1 0;
+    margin: 0;
 }
 
-.half-btn:last-child {
-    margin-right: 0;
+#select-buttons .half-btn:first-child {
+    margin-right: 1;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -417,6 +452,17 @@ ModalScreen {
     height: 3;
     width: auto;
     min-width: 10;
+    background: transparent;
+    border: round $primary;
+    color: $text;
+}
+
+.nav-btn:hover,
+.nav-btn:focus {
+    background: transparent;
+    border: round $accent;
+    color: $accent;
+    text-style: bold;
 }
 
 #folder-explorer-section {
@@ -438,6 +484,35 @@ ModalScreen {
 
 #btn-modal-cancel {
     margin-right: 2;
+    background: transparent;
+    border: round $primary;
+    color: $text;
+    width: auto;
+    min-width: 12;
+}
+
+#btn-modal-cancel:hover,
+#btn-modal-cancel:focus {
+    background: transparent;
+    border: round $accent;
+    color: $accent;
+    text-style: bold;
+}
+
+#btn-modal-confirm {
+    background: transparent;
+    border: round $success;
+    color: $success;
+    width: auto;
+    min-width: 12;
+}
+
+#btn-modal-confirm:hover,
+#btn-modal-confirm:focus {
+    background: transparent;
+    border: round $accent;
+    color: $accent;
+    text-style: bold;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -478,4 +553,79 @@ Toast.-warning {
 
 Toast.-error {
     border: round $error;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   COPY PROGRESS MODAL
+   ───────────────────────────────────────────────────────────────────────────── */
+#progress-modal {
+    width: 50;
+    height: auto;
+    max-height: 14;
+    border: round $primary;
+    padding: 1 2;
+    background: $background;
+    align: center middle;
+}
+
+#progress-modal .modal-title {
+    text-align: center;
+    text-style: bold;
+    color: $primary;
+    border-bottom: solid $surface-lighten-2;
+    padding-bottom: 1;
+    margin-bottom: 1;
+    height: auto;
+}
+
+#progress-status {
+    text-align: center;
+    color: $text;
+    margin-bottom: 1;
+    height: auto;
+}
+
+#copy-progress {
+    width: 100%;
+    height: 1;
+    margin-bottom: 1;
+}
+
+#copy-progress Bar {
+    color: $success;
+    background: $surface;
+}
+
+#copy-progress PercentageStatus {
+    color: $text;
+    text-style: bold;
+}
+
+#progress-file {
+    text-align: center;
+    height: auto;
+    margin-bottom: 1;
+}
+
+#progress-modal .modal-buttons {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    margin-top: 1;
+}
+
+#btn-cancel-copy {
+    background: transparent;
+    border: round $error;
+    color: $error;
+    width: auto;
+    min-width: 12;
+}
+
+#btn-cancel-copy:hover,
+#btn-cancel-copy:focus {
+    background: $error 30%;
+    border: round $error;
+    color: $error;
+    text-style: bold;
 }

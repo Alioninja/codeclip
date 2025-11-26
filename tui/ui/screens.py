@@ -3,7 +3,7 @@ from pathlib import Path
 from textual.screen import ModalScreen
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Static, Input, Button, DirectoryTree
+from textual.widgets import Static, Input, Button, DirectoryTree, ProgressBar
 from textual.binding import Binding
 from .widgets import PathSuggester, FolderOnlyTree
 
@@ -300,8 +300,7 @@ class HelpScreen(ModalScreen):
   [#e4e4e4]Tab[/]       Switch focus between panels
 
 [bold #7f9825]Selection[/]
-  [#e4e4e4]Space[/]     Toggle file/folder selection
-  [#e4e4e4]Enter[/]     Open/close folder (select for files)
+  [#e4e4e4]Space/Enter[/] Toggle file/folder selection
   [#e4e4e4]a[/]         Select all files
   [#e4e4e4]A[/]         Deselect all files
 
@@ -320,3 +319,70 @@ class HelpScreen(ModalScreen):
     
     def action_close(self):
         self.dismiss()
+
+
+class CopyProgressModal(ModalScreen):
+    """Modal showing progress of the copy operation with cancel capability."""
+    
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", priority=True),
+    ]
+    
+    def __init__(self, total_files: int):
+        super().__init__()
+        self.total_files = total_files
+        self.current_file = 0
+        self.cancelled = False
+        self._result = None
+        self._error = None
+    
+    def compose(self) -> ComposeResult:
+        with Container(id="progress-modal"):
+            yield Static("📋 Copying to Clipboard", classes="modal-title")
+            yield Static("", id="progress-status")
+            yield ProgressBar(total=100, show_eta=False, id="copy-progress")
+            yield Static("", id="progress-file")
+            with Horizontal(classes="modal-buttons"):
+                yield Button("Cancel", id="btn-cancel-copy", variant="error")
+    
+    def on_mount(self):
+        """Start with 0% progress."""
+        self.update_progress(0, "Starting...")
+    
+    def update_progress(self, current: int, filename: str = ""):
+        """Update progress display."""
+        if self.cancelled:
+            return
+        self.current_file = current
+        progress = int((current / self.total_files) * 100) if self.total_files > 0 else 0
+        
+        try:
+            status = self.query_one("#progress-status", Static)
+            status.update(f"Processing file {current} of {self.total_files}")
+            
+            progress_bar = self.query_one("#copy-progress", ProgressBar)
+            progress_bar.update(progress=progress)
+            
+            file_label = self.query_one("#progress-file", Static)
+            if filename:
+                # Truncate long filenames
+                if len(filename) > 40:
+                    filename = "..." + filename[-37:]
+                file_label.update(f"[#606060]{filename}[/]")
+        except Exception:
+            pass
+    
+    def on_button_pressed(self, event: Button.Pressed):
+        if event.button.id == "btn-cancel-copy":
+            self.action_cancel()
+    
+    def action_cancel(self):
+        """Cancel the copy operation."""
+        self.cancelled = True
+        try:
+            status = self.query_one("#progress-status", Static)
+            status.update("[#d4a520]Cancelling...[/]")
+        except Exception:
+            pass
+        # Dismiss with cancelled result
+        self.dismiss((False, "Cancelled by user", 0))

@@ -1,9 +1,7 @@
-import threading
-import time
 from pathlib import Path
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Tree, Checkbox, Button, Static
+from textual.widgets import Tree, Checkbox, Button, Static
 from textual.containers import Vertical, Horizontal, VerticalScroll, Container
 from textual.binding import Binding
 
@@ -13,13 +11,13 @@ from .core.scanner import scan_file_extensions, build_folder_tree, get_tree_stri
 from .core.clipboard import copy_to_clipboard
 from .utils.helpers import get_language
 from .ui.widgets import FormatSelector, KeyHelperBar, NavigationScroll, FileTree, ActionButton, TypeToggle
-from .ui.screens import ChangeDirectoryModal, HelpScreen
+from .ui.screens import ChangeDirectoryModal, HelpScreen, CopyProgressModal
 from .ui.formatters import format_output_markdown, format_output_xml, format_output_plain
 
 class CodeClipApp(App):
     """CodeClip - Copy codebase to clipboard."""
     
-    CSS_PATH = "terminal_app.css"
+    CSS_PATH = "terminal_app.tcss"
     TITLE = "CodeClip"
     
     BINDINGS = [
@@ -28,8 +26,7 @@ class CodeClipApp(App):
         Binding("question_mark", "toggle_help", "Help", show=False),
         Binding("space", "action_space", "Select", show=False),
         Binding("enter", "action_enter", "Enter", show=False),
-        Binding("a", "select_all", "All", show=False),
-        Binding("A", "deselect_all", "Deselect All", show=False),
+        Binding("ctrl+a", "toggle_all", "All/Clear", show=False),
         Binding("c", "change_dir", "Dir", show=False),
         Binding("g", "generate", "Copy", show=False),
         Binding("r", "refresh", "Refresh", show=False),
@@ -46,10 +43,16 @@ class CodeClipApp(App):
         self._processing = False
         self._output_format = self._state.get("output_format", "markdown")
         self._ext_checkboxes = []
+        self._copy_data = {}
+        
+        # Restore saved theme
+        saved_theme = self._state.get("theme", "textual-dark")
+        try:
+            self.theme = saved_theme
+        except Exception:
+            self.theme = "textual-dark"
     
     def compose(self) -> ComposeResult:
-        yield Header()
-        
         with Horizontal(id="main-container"):
             # Left panel - File tree
             with Vertical(id="left-panel"):
@@ -98,9 +101,7 @@ class CodeClipApp(App):
             ("m", "Menu"),
             ("Tab", "Focus"),
             ("Space", "Select"),
-            ("a", "All"),
-            ("A", "Clear"),
-            ("↑/↓/←/→", "Nav"),
+            ("Ctrl+A", "All/Clear"),
             ("g", "Copy"),
             ("c", "Dir"),
         ], id="key-helper")
@@ -131,6 +132,10 @@ class CodeClipApp(App):
         self._output_format = event.format
         self._persist_state()
     
+    def watch_theme(self, theme: str) -> None:
+        """Watch for theme changes and persist them."""
+        self._persist_state()
+    
     def load_directory(self):
         """Load the current directory into the tree."""
         # Update header
@@ -159,13 +164,25 @@ class CodeClipApp(App):
         self._update_stats()
         self._update_dir_path()
         
-        # Save state
-        self._persist_state()
+        # Don't persist state here - only persist when user makes changes
+        # This prevents overwriting saved state before it's properly applied
+    
+    def _has_files(self, folder_tree):
+        """Check if a folder tree contains any files (recursively)."""
+        if folder_tree.get("files"):
+            return True
+        for sub_tree in folder_tree.get("subfolders", {}).values():
+            if self._has_files(sub_tree):
+                return True
+        return False
     
     def _add_nodes(self, parent_node, folder_tree):
         """Recursively add nodes to the tree."""
-        # Add folders first
+        # Add folders first (only if they contain files somewhere)
         for folder, sub_tree in sorted(folder_tree["subfolders"].items()):
+            if not self._has_files(sub_tree):
+                # Skip empty folders (no files in this folder or any subfolder)
+                continue
             label = self._format_label(folder, True, is_dir=True)
             child = parent_node.add(label, data={"path": folder, "is_dir": True, "selected": True})
             self._add_nodes(child, sub_tree)
@@ -233,8 +250,31 @@ class CodeClipApp(App):
     
     def _apply_saved_state(self, tree):
         """Apply saved selection state to the tree."""
-        saved_files = {Path(p) for p in self._state.get("selected_files", []) if p}
-        has_saved = bool(saved_files)
+        # Check if we're in the same directory as last time
+        last_dir = self._state.get("last_dir", "")
+        is_same_dir = last_dir == str(self.current_dir)
+        
+        # Check if we have explicit state saved (including empty selections)
+        has_explicit_state = "selected_files" in self._state and is_same_dir
+        
+        if not has_explicit_state:
+            # New directory or no saved state - all files stay selected (default from _add_nodes)
+            # Just update directory states
+            self._update_dir_selection_states()
+            return
+        
+        # Get saved files as posix strings for comparison
+        saved_files = set(self._state.get("selected_files", []))
+        
+        # Also get the set of all files that existed in last save
+        # Files not in saved_files but that existed = were deselected
+        # Files not seen before = new files, should be selected by default
+        saved_all_files = set(self._state.get("all_files", []))
+        
+        # Count for debugging
+        selected_count = 0
+        deselected_count = 0
+        new_file_count = 0
         
         for node in walk_tree(tree.root):
             if not node.data:
@@ -243,13 +283,29 @@ class CodeClipApp(App):
                 continue
             
             rel_path = node_relative_path(node)
-            if has_saved:
-                node.data["selected"] = rel_path in saved_files
+            rel_path_str = rel_path.as_posix() if rel_path else ""
+            
+            if saved_all_files:
+                # We have a record of all files from last run
+                if rel_path_str in saved_all_files:
+                    # File existed before - restore its saved state
+                    is_selected = rel_path_str in saved_files
+                    node.data["selected"] = is_selected
+                    if is_selected:
+                        selected_count += 1
+                    else:
+                        deselected_count += 1
+                else:
+                    # New file - default to selected
+                    node.data["selected"] = True
+                    new_file_count += 1
             else:
-                node.data["selected"] = True
+                # Old state format without all_files - use old behavior
+                node.data["selected"] = rel_path_str in saved_files
+            
             self._refresh_node_label(node)
         
-        # Update directory states
+        # Update directory states based on children
         self._update_dir_selection_states()
     
     def _update_dir_selection_states(self):
@@ -274,7 +330,11 @@ class CodeClipApp(App):
                     children_states.append(state)
             
             if not children_states:
-                return node.data.get("selected", False)
+                # Empty folder - default to False (unselected)
+                # This prevents empty folders from causing parent to show as "partial"
+                node.data["selected"] = False
+                self._refresh_node_label(node)
+                return False
             
             all_true = all(s is True for s in children_states)
             all_false = all(s is False for s in children_states)
@@ -328,13 +388,16 @@ class CodeClipApp(App):
             return
         
         selected_files = []
+        all_files = []
         for node in walk_tree(tree.root):
             if not node.data or node.data.get("is_dir"):
                 continue
-            if node.data.get("selected"):
-                rel_path = node_relative_path(node)
-                if rel_path:
-                    selected_files.append(rel_path.as_posix())
+            rel_path = node_relative_path(node)
+            if rel_path:
+                path_str = rel_path.as_posix()
+                all_files.append(path_str)
+                if node.data.get("selected"):
+                    selected_files.append(path_str)
         
         selected_exts = []
         for cb in self.query(".ext-checkbox"):
@@ -346,8 +409,10 @@ class CodeClipApp(App):
         state = {
             "last_dir": str(self.current_dir),
             "selected_files": selected_files,
+            "all_files": all_files,
             "selected_exts": selected_exts,
             "output_format": self._output_format,
+            "theme": self.theme,
         }
         self._state = state
         save_state(state)
@@ -490,7 +555,7 @@ class CodeClipApp(App):
         """Handle Enter key."""
         focused = self.focused
         if isinstance(focused, Tree):
-            self.action_toggle_node_or_select()
+            self.action_toggle_select()
         elif isinstance(focused, Checkbox):
             focused.toggle()
         elif isinstance(focused, TypeToggle):
@@ -522,7 +587,7 @@ class CodeClipApp(App):
         
         self._processing = True
         status = self.query_one("#status-text", Static)
-        status.update("[#d4a520]⏳ Processing...[/]")
+        status.update("[#d4a520]⏳ Preparing...[/]")
         
         try:
             tree = self.query_one("#file-tree", FileTree)
@@ -544,20 +609,64 @@ class CodeClipApp(App):
                 self._processing = False
                 return
             
+            # Store data for the copy operation
+            self._copy_data = {
+                "files": files,
+                "selected_exts": selected_exts,
+                "project_name": self.current_dir.name,
+            }
+            
+            # Show progress modal
+            modal = CopyProgressModal(len(files))
+            self.push_screen(modal, self._on_copy_complete)
+            
+            # Start the copy operation as a worker
+            self.run_worker(
+                self._do_copy_operation(modal),
+                name="copy_operation",
+                exclusive=True,
+            )
+        except Exception as e:
+            status.update(f"[#c73030]✗ Error: {str(e)[:30]}[/]")
+            self.notify(f"Error: {e}", severity="error")
+            self._processing = False
+    
+    async def _do_copy_operation(self, modal: CopyProgressModal):
+        """Perform the copy operation with progress updates."""
+        import asyncio
+        
+        files = self._copy_data["files"]
+        selected_exts = self._copy_data["selected_exts"]
+        project_name = self._copy_data["project_name"]
+        
+        try:
             # Prepare data for formatters
-            project_name = self.current_dir.name
             tree_string = get_tree_string(self.current_dir, selected_exts if selected_exts else None)
             
-            # Read file contents
+            # Read file contents with progress updates
             files_content = []
-            for file_path in files:
+            for i, file_path in enumerate(files):
+                # Check if cancelled
+                if modal.cancelled:
+                    return
+                
+                # Update progress
+                rel_path = file_path.relative_to(self.current_dir)
+                modal.update_progress(i + 1, str(rel_path))
+                
                 try:
                     content = file_path.read_text(errors='replace')
-                    rel_path = file_path.relative_to(self.current_dir)
                     lang = get_language(file_path.suffix)
                     files_content.append((str(rel_path), content, lang))
                 except Exception:
                     pass
+                
+                # Small delay to allow UI updates and check for cancel
+                await asyncio.sleep(0.01)
+            
+            # Check if cancelled before copying
+            if modal.cancelled:
+                return
             
             # Format output based on selected format
             if self._output_format == "markdown":
@@ -567,21 +676,89 @@ class CodeClipApp(App):
             else:
                 output = format_output_plain(project_name, tree_string, files_content)
             
-            # Copy to clipboard
-            success = copy_to_clipboard(output)
+            # Check if cancelled before clipboard operation
+            if modal.cancelled:
+                return
             
-            if success:
-                status.update(f"[#87af00]✓ Copied {len(files)} files![/]")
-                self.notify(f"Copied {len(files)} files to clipboard!", severity="information")
-            else:
-                status.update("[#c73030]✗ Clipboard error[/]")
-                self.notify("Failed to copy to clipboard", severity="error")
+            # Copy to clipboard
+            success, msg = copy_to_clipboard(output)
+            
+            if not modal.cancelled:
+                if success:
+                    modal.dismiss((True, f"Copied {len(files)} files!", len(files)))
+                else:
+                    modal.dismiss((False, msg, 0))
         except Exception as e:
-            status.update(f"[#c73030]✗ Error: {str(e)[:30]}[/]")
-            self.notify(f"Error: {e}", severity="error")
-        finally:
-            self._processing = False
+            if not modal.cancelled:
+                modal.dismiss((False, str(e), 0))
     
+    def _on_copy_complete(self, result):
+        """Handle copy operation completion."""
+        self._processing = False
+        status = self.query_one("#status-text", Static)
+        
+        if result is None:
+            status.update("[#c73030]✗ Cancelled[/]")
+            return
+        
+        success, message, file_count = result
+        
+        if success:
+            status.update(f"[#87af00]✓ {message}[/]")
+            self.notify(message, severity="information")
+        elif "Cancelled" in message:
+            status.update("[#d4a520]⚠ Cancelled[/]")
+            self.notify("Copy operation cancelled", severity="warning")
+        else:
+            status.update(f"[#c73030]✗ {message[:30]}[/]")
+            self.notify(f"Error: {message}", severity="error")
+    
+    def action_toggle_all(self):
+        """Toggle between Select All and Deselect All based on current focus."""
+        focused = self.focused
+        
+        # Check if focus is on file tree
+        if isinstance(focused, FileTree):
+            tree = self.query_one("#file-tree", FileTree)
+            # If root is fully selected (True), deselect all. Otherwise select all.
+            if tree.root.data.get("selected") is True:
+                self.action_deselect_all()
+            else:
+                self.action_select_all()
+            return
+        
+        # Check if focus is on a type toggle (file types section)
+        if isinstance(focused, TypeToggle):
+            # Check if all types are selected
+            all_selected = all(
+                cb.value for cb in self.query(".ext-checkbox")
+                if isinstance(cb, TypeToggle)
+            )
+            if all_selected:
+                self._deselect_all_types()
+            else:
+                self._select_all_types()
+            return
+        
+        # Check if focus is within the file-types-container
+        try:
+            types_container = self.query_one("#file-types-container")
+            if focused and focused in types_container.walk_children():
+                all_selected = all(
+                    cb.value for cb in self.query(".ext-checkbox")
+                    if isinstance(cb, TypeToggle)
+                )
+                if all_selected:
+                    self._deselect_all_types()
+                else:
+                    self._select_all_types()
+                return
+        except Exception:
+            pass
+        
+        # If focus is elsewhere, do nothing
+        pass
+
     def action_select_all(self):
         """Select all files in the tree."""
         tree = self.query_one("#file-tree", FileTree)

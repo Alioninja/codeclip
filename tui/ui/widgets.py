@@ -389,6 +389,8 @@ class FileTree(Tree):
         Binding("right", "expand_or_child", "Expand", show=False),
         Binding("tab", "app.focus_next_section", "Next Section", show=False),
         Binding("shift+tab", "app.focus_prev_section", "Prev Section", show=False),
+        Binding("space", "app.toggle_select", "Select", show=False),
+        Binding("enter", "app.toggle_select", "Select", show=False),
     ]
     
     def action_collapse_or_parent(self):
