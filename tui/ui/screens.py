@@ -14,6 +14,10 @@ class ChangeDirectoryModal(ModalScreen):
         Binding("escape", "cancel", "Cancel", priority=True),
         Binding("tab", "modal_focus_next", "Next", priority=True),
         Binding("shift+tab", "modal_focus_previous", "Previous", priority=True),
+        Binding("up", "nav_up", "Up", show=False),
+        Binding("down", "nav_down", "Down", show=False),
+        Binding("left", "nav_left", "Left", show=False),
+        Binding("right", "nav_right", "Right", show=False),
     ]
     
     # Define the focus order for widgets in this modal
@@ -106,6 +110,57 @@ class ChangeDirectoryModal(ModalScreen):
             prev_idx = len(widgets) - 1
         
         widgets[prev_idx].focus()
+        
+    def action_nav_up(self):
+        """Navigate up between sections."""
+        focused = self.app.focused
+        if not focused:
+            return
+            
+        if focused.id in ["btn-up-dir", "btn-home-dir"]:
+            self.query_one("#dir-input").focus()
+        elif focused.id == "folder-tree":
+            # Optional: Allow escaping tree with Up if at top? 
+            # For now, let Tree handle Up (scrolling)
+            pass
+        elif focused.id in ["btn-modal-cancel", "btn-modal-confirm"]:
+            self.query_one("#folder-tree").focus()
+            
+    def action_nav_down(self):
+        """Navigate down between sections."""
+        focused = self.app.focused
+        if not focused:
+            return
+            
+        if focused.id == "dir-input":
+            self.query_one("#btn-up-dir").focus()
+        elif focused.id in ["btn-up-dir", "btn-home-dir"]:
+            self.query_one("#folder-tree").focus()
+        elif focused.id == "folder-tree":
+            # Tree handles down, usually.
+            pass
+            
+    def action_nav_left(self):
+        """Navigate left between buttons."""
+        focused = self.app.focused
+        if not focused:
+            return
+            
+        if focused.id == "btn-home-dir":
+            self.query_one("#btn-up-dir").focus()
+        elif focused.id == "btn-modal-confirm":
+            self.query_one("#btn-modal-cancel").focus()
+            
+    def action_nav_right(self):
+        """Navigate right between buttons."""
+        focused = self.app.focused
+        if not focused:
+            return
+            
+        if focused.id == "btn-up-dir":
+            self.query_one("#btn-home-dir").focus()
+        elif focused.id == "btn-modal-cancel":
+            self.query_one("#btn-modal-confirm").focus()
     
     def on_button_pressed(self, event: Button.Pressed):
         if event.button.id == "btn-modal-cancel":

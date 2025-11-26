@@ -51,10 +51,17 @@ Checkbox.-on:focus {
 }
 
 /* Button focus/hover */
+Button {
+    border: round $primary;
+    background: $background;
+    height: 3;
+}
+
 Button:focus {
     background: $accent;
     color: $text;
     text-style: bold;
+    border: round $accent;
 }
 
 Button:hover {
@@ -226,15 +233,17 @@ Button.-active {
 
 #format-selector .format-btn {
     width: 1fr;
-    height: 1;
+    height: 3;
     min-width: 5;
-    border: none;
+    border: round $primary;
+    background: $background;
     margin: 0 1 0 0;
     padding: 0;
 }
 
 #format-selector .format-btn.format-active {
     background: $primary;
+    border: round $primary;
     color: $background;
     text-style: bold;
 }
@@ -281,10 +290,13 @@ Button.-active {
     width: 100%;
     height: 3;
     margin: 0 0 1 0;
+    background: $background;
+    border: round $primary;
 }
 
 .control-btn.primary-btn {
     background: $success;
+    border: round $success;
     color: $background;
     text-style: bold;
 }

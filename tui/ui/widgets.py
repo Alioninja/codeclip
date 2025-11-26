@@ -25,12 +25,12 @@ class TypeToggle(Static):
         color: #e0e0e0;
     }
     TypeToggle:focus {
-        background: #00afff;
-        color: #101010;
+        background: $accent;
+        color: $text;
         text-style: bold;
     }
     TypeToggle:hover {
-        background: #005f87;
+        background: $accent 50%;
     }
     """
     
@@ -67,6 +67,8 @@ class TypeToggle(Static):
     BINDINGS = [
         Binding("space", "toggle", "Toggle", show=False),
         Binding("enter", "toggle", "Toggle", show=False),
+        Binding("tab", "app.focus_next_section", "Next Section", show=False),
+        Binding("shift+tab", "app.focus_prev_section", "Prev Section", show=False),
     ]
 
 
@@ -77,6 +79,8 @@ class FormatButton(Button):
         Binding("left", "focus_prev", "Previous", show=False),
         Binding("right", "focus_next", "Next", show=False),
         Binding("space", "press_button", "Select", show=False),
+        Binding("tab", "app.focus_next_section", "Next Section", show=False),
+        Binding("shift+tab", "app.focus_prev_section", "Prev Section", show=False),
     ]
     
     def action_press_button(self):
@@ -127,6 +131,8 @@ class ActionButton(Button):
         Binding("left", "nav_left", "Left", show=False),
         Binding("right", "nav_right", "Right", show=False),
         Binding("space", "press_button", "Select", show=False),
+        Binding("tab", "app.focus_next_section", "Next Section", show=False),
+        Binding("shift+tab", "app.focus_prev_section", "Prev Section", show=False),
     ]
     
     def action_press_button(self):
@@ -381,6 +387,8 @@ class FileTree(Tree):
         Binding("down", "cursor_down", "Down", show=False),
         Binding("left", "collapse_or_parent", "Collapse", show=False),
         Binding("right", "expand_or_child", "Expand", show=False),
+        Binding("tab", "app.focus_next_section", "Next Section", show=False),
+        Binding("shift+tab", "app.focus_prev_section", "Prev Section", show=False),
     ]
     
     def action_collapse_or_parent(self):
@@ -414,6 +422,8 @@ class NavigationScroll(VerticalScroll):
         # Left/right do nothing - prevent any issues
         Binding("left", "noop", "Left", show=False),
         Binding("right", "noop", "Right", show=False),
+        Binding("tab", "app.focus_next_section", "Next Section", show=False),
+        Binding("shift+tab", "app.focus_prev_section", "Prev Section", show=False),
     ]
     
     def action_noop(self):

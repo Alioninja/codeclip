@@ -33,8 +33,8 @@ class CodeClipApp(App):
         Binding("c", "change_dir", "Dir", show=False),
         Binding("g", "generate", "Copy", show=False),
         Binding("r", "refresh", "Refresh", show=False),
-        Binding("tab", "focus_next_section", "Next Section", show=False, priority=True),
-        Binding("shift+tab", "focus_prev_section", "Prev Section", show=False, priority=True),
+        Binding("tab", "focus_next_section", "Next Section", show=False),
+        Binding("shift+tab", "focus_prev_section", "Prev Section", show=False),
         Binding("m", "command_palette", "Menu", show=False),
     ]
     
@@ -98,6 +98,8 @@ class CodeClipApp(App):
             ("m", "Menu"),
             ("Tab", "Focus"),
             ("Space", "Select"),
+            ("a", "All"),
+            ("A", "Clear"),
             ("↑/↓/←/→", "Nav"),
             ("g", "Copy"),
             ("c", "Dir"),
@@ -187,7 +189,8 @@ class CodeClipApp(App):
         else:
             # Binary state for files - use checkboxes too
             icon = "[#00afff]■[/]" if selected else "[#404040]□[/]"
-            return f"{icon} {name}"
+            # Add padding to align with folder arrow and a neutral file icon
+            return f"  {icon} [#303030]📄[/] {name}"
     
     def _refresh_node_label(self, node):
         """Refresh a node's label based on its selection state."""
