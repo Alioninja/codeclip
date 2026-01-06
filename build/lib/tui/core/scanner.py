@@ -1,0 +1,179 @@
+from pathlib import Path
+from collections import Counter
+from ..config import (
+    MAX_INITIAL_SCAN_DEPTH, MAX_FILES_PER_DIR_SCAN,
+    IGNORED_DIRS, IGNORED_FILES
+)
+from ..utils.helpers import (
+    is_ignored_dir, is_ignored_file, path_contains_ignored_dir
+)
+
+def scan_file_extensions(base_path):
+    """Scan directory for file extensions."""
+    base_path = Path(base_path)
+    if is_ignored_dir(base_path.name) or path_contains_ignored_dir(str(base_path)):
+        return Counter(), set()
+
+    extension_counts = Counter()
+    limited_extensions = set()
+
+    def scan_directory(directory_path, current_depth=0):
+        if current_depth > MAX_INITIAL_SCAN_DEPTH:
+            return
+        if path_contains_ignored_dir(str(directory_path)):
+            return
+        try:
+            all_files = []
+            subdirs = []
+            for item in directory_path.iterdir():
+                if item.is_file() and not is_ignored_file(item.name):
+                    all_files.append(item.name)
+                elif item.is_dir() and not is_ignored_dir(item.name):
+                    subdirs.append(item)
+            
+            if len(all_files) > MAX_FILES_PER_DIR_SCAN:
+                sampled = all_files[:MAX_FILES_PER_DIR_SCAN//2] + all_files[-MAX_FILES_PER_DIR_SCAN//2:]
+                multiplier = len(all_files) / len(sampled)
+                for f in sampled:
+                    ext = Path(f).suffix
+                    if ext:
+                        limited_extensions.add(ext.lower())
+            else:
+                sampled = all_files
+                multiplier = 1
+            
+            for f in sampled:
+                ext = Path(f).suffix
+                if ext:
+                    extension_counts[ext.lower()] += int(multiplier)
+            
+            for subdir in subdirs:
+                scan_directory(subdir, current_depth + 1)
+        except (OSError, PermissionError):
+            pass
+
+    scan_directory(base_path)
+    return extension_counts, limited_extensions
+
+
+def build_folder_tree(base_path, max_depth=None, current_depth=0):
+    """Build a folder tree structure."""
+    base_path = Path(base_path)
+    if is_ignored_dir(base_path.name):
+        return {"subfolders": {}, "files": [], "is_large": False}
+    
+    tree = {"subfolders": {}, "files": [], "is_large": False}
+    if path_contains_ignored_dir(str(base_path)):
+        return tree
+
+    if max_depth is not None and current_depth >= max_depth:
+        tree["lazy_load"] = True
+        return tree
+
+    try:
+        dirs = []
+        files_in_dir = []
+        file_count = 0
+
+        for entry in base_path.iterdir():
+            name = entry.name
+            if path_contains_ignored_dir(str(entry)) or is_ignored_dir(name):
+                continue
+            if entry.is_dir():
+                dirs.append(entry)
+            elif entry.is_file() and not is_ignored_file(name):
+                file_count += 1
+                if file_count <= MAX_FILES_PER_DIR_SCAN:
+                    files_in_dir.append(name)
+                elif file_count == MAX_FILES_PER_DIR_SCAN + 1:
+                    tree["is_large"] = True
+
+        tree["files"] = sorted(files_in_dir, key=str.lower)
+        dirs.sort(key=lambda e: e.name.lower())
+
+        next_max_depth = 4 if max_depth is None else max_depth
+
+        for entry in dirs:
+            sub_tree = build_folder_tree(entry, next_max_depth, current_depth + 1)
+            tree["subfolders"][entry.name] = sub_tree
+    except OSError:
+        pass
+    return tree
+
+
+def get_tree_string(start_path, allowed_extensions=None):
+    """Generate a string representation of the directory tree."""
+    start_path = Path(start_path)
+    if path_contains_ignored_dir(str(start_path)):
+        return ""
+
+    lines = []
+    
+    def walk(path, prefix=""):
+        try:
+            entries = list(path.iterdir())
+            dirs = sorted([e for e in entries if e.is_dir() and not is_ignored_dir(e.name)], key=lambda e: e.name.lower())
+            files = sorted([e for e in entries if e.is_file() and not is_ignored_file(e.name)], key=lambda e: e.name.lower())
+            
+            if allowed_extensions:
+                files = [f for f in files if f.suffix.lower() in allowed_extensions]
+            
+            all_entries = dirs + files
+            for i, entry in enumerate(all_entries):
+                is_last = i == len(all_entries) - 1
+                pointer = "└── " if is_last else "├── "
+                
+                if entry.is_dir():
+                    lines.append(f"{prefix}{pointer}{entry.name}/")
+                    extension = "    " if is_last else "│   "
+                    if not path_contains_ignored_dir(str(entry)):
+                        walk(entry, prefix + extension)
+                else:
+                    lines.append(f"{prefix}{pointer}{entry.name}")
+        except OSError:
+            pass
+
+    walk(start_path)
+    return "\n".join(lines)
+
+
+def walk_tree(root_node):
+    """Walk all descendants of a tree node."""
+    def _walk(node):
+        for child in node.children:
+            yield child
+            yield from _walk(child)
+    return _walk(root_node)
+
+
+def node_relative_path(node):
+    """Get the relative path of a tree node."""
+    parts = []
+    current = node
+    while current and getattr(current, "data", None):
+        parent = current.parent
+        if parent is None:
+            break
+        part = current.data.get("path", "")
+        if part:
+            parts.append(part)
+        current = parent
+    if not parts:
+        return Path()
+    return Path(*reversed(parts))
+
+
+def collect_selected_files(tree, include_exts, current_dir):
+    """Collect selected file paths from the tree."""
+    selected = []
+    filter_all = not include_exts
+    
+    for node in walk_tree(tree.root):
+        if not node.data.get("is_dir", False) and node.data.get("selected"):
+            rel_path = node_relative_path(node)
+            if not rel_path:
+                continue
+            ext = rel_path.suffix
+            if filter_all or (ext and ext.lower() in include_exts):
+                selected.append(Path(current_dir) / rel_path)
+    return selected

@@ -1,0 +1,481 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CodeClip TUI - Textual Theme-based styling
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL SELECTION/FOCUS STYLES - Consistent across all widgets
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Tree cursor highlight - only show when tree is focused */
+Tree>.tree--cursor {
+    background: transparent;
+    color: $text;
+}
+
+Tree:focus>.tree--cursor {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
+Tree>.tree--highlight {
+    background: transparent;
+}
+
+Tree:focus>.tree--highlight {
+    background: $accent 50%;
+}
+
+Tree>.tree--highlight-line {
+    background: transparent;
+}
+
+Tree:focus>.tree--highlight-line {
+    background: $accent 30%;
+}
+
+/* Checkbox focus/hover */
+Checkbox:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
+Checkbox:hover {
+    background: $accent 50%;
+}
+
+Checkbox.-on:focus {
+    background: $accent;
+    color: $text;
+}
+
+/* Button focus/hover */
+Button {
+    border: round $primary;
+    background: $background;
+    height: 3;
+}
+
+Button:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+    border: round $accent;
+}
+
+Button:hover {
+    background: $accent 70%;
+}
+
+Button.-active {
+    background: $accent;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MAIN LAYOUT
+   ───────────────────────────────────────────────────────────────────────────── */
+#main-container {
+    layout: horizontal;
+    height: 1fr;
+    width: 100%;
+    padding: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LEFT PANEL - FILE TREE
+   ───────────────────────────────────────────────────────────────────────────── */
+#left-panel {
+    width: 2fr;
+    min-width: 40;
+    height: 100%;
+    border: round $primary;
+    margin: 0 1 0 0;
+    padding: 0;
+}
+
+#left-panel:focus-within {
+    border: round $accent;
+}
+
+#left-panel-title-box {
+    height: 1;
+    dock: top;
+    layout: horizontal;
+    padding: 0 1;
+}
+
+#tree-title {
+    color: $primary;
+    text-style: bold;
+    width: auto;
+}
+
+#tree-stats {
+    color: $text-muted;
+    text-align: right;
+    width: 1fr;
+}
+
+#file-tree-container {
+    height: 1fr;
+    padding: 0 1;
+}
+
+#file-tree {
+    height: 1fr;
+    padding: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RIGHT PANEL - CONTROLS
+   ───────────────────────────────────────────────────────────────────────────── */
+#right-panel {
+    width: 1fr;
+    min-width: 28;
+    max-width: 40;
+    height: 100%;
+    layout: vertical;
+    padding: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SECTION BOXES
+   ───────────────────────────────────────────────────────────────────────────── */
+.section-box {
+    margin: 0;
+    padding: 0 1;
+    height: auto;
+}
+
+.section-title {
+    text-style: bold;
+    color: $primary;
+    dock: top;
+    height: 1;
+    padding: 0;
+    margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FILE TYPES SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
+#file-types-section {
+    height: 1fr;
+    min-height: 8;
+    max-height: 16;
+    border: round $primary;
+    margin-bottom: 0;
+}
+
+#file-types-section:focus-within {
+    border: round $accent;
+}
+
+#file-types-header {
+    height: 1;
+    dock: top;
+    layout: horizontal;
+    padding: 0;
+}
+
+#file-types-header .section-title {
+    width: 1fr;
+}
+
+#file-types-container {
+    height: 1fr;
+    padding: 0;
+}
+
+.ext-checkbox {
+    padding: 0;
+    margin: 0;
+    border: none;
+    height: 1;
+}
+
+
+
+
+/* Mini buttons for all/none */
+.mini-btn {
+    width: 3;
+    min-width: 3;
+    height: 1;
+    border: none;
+    padding: 0;
+    margin: 0 0 0 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FORMAT SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
+#format-section {
+    height: auto;
+    min-height: 4;
+    border: round $primary;
+    margin-top: -1;
+    margin-bottom: 0;
+}
+
+#format-section:focus-within {
+    border: round $accent;
+}
+
+#format-selector {
+    height: 2;
+    layout: horizontal;
+    align: center middle;
+    padding: 0;
+    margin: 0;
+}
+
+#format-selector .format-btn {
+    width: 1fr;
+    height: 3;
+    min-width: 5;
+    border: round $primary;
+    background: transparent;
+    margin: 0 1 0 0;
+    padding: 0;
+}
+
+#format-selector .format-btn.format-active {
+    background: transparent;
+    border: heavy $accent;
+    color: $accent;
+    text-style: bold;
+}
+
+#format-selector .format-btn.format-active:focus {
+    background: transparent;
+    border: heavy $accent;
+    color: $accent;
+    text-style: bold;
+}
+
+#format-selector .format-btn:focus {
+    background: transparent;
+    border: round $accent;
+    color: $accent;
+    text-style: bold;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CONTROLS SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
+#controls-section {
+    height: auto;
+    min-height: 10;
+    border: round $primary;
+    margin-top: -1;
+    margin-bottom: 0;
+}
+
+#controls-section:focus-within {
+    border: round $accent;
+}
+
+#controls-container {
+    layout: vertical;
+    height: auto;
+    padding: 0;
+}
+
+#select-buttons {
+    height: 3;
+    layout: horizontal;
+}
+
+.control-btn {
+    width: 100%;
+    height: 3;
+    margin: 0 0 1 0;
+    background: $background;
+    border: round $primary;
+}
+
+.control-btn.primary-btn {
+    background: $success;
+    border: round $success;
+    color: $background;
+    text-style: bold;
+}
+
+.control-btn.primary-btn:focus {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
+.control-btn.primary-btn:hover {
+    background: $success 80%;
+}
+
+.half-btn {
+    width: 1fr;
+    margin: 0 1 1 0;
+}
+
+.half-btn:last-child {
+    margin-right: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   STATUS SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
+#status-section {
+    height: auto;
+    min-height: 5;
+    dock: bottom;
+    border: round $primary;
+    margin-top: -1;
+}
+
+#status-section:focus-within {
+    border: round $accent;
+}
+
+#status-text {
+    color: $success;
+    height: 1;
+    padding: 0;
+}
+
+#dir-path {
+    color: $text-muted;
+    height: 1;
+    padding: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   KEY HELPER BAR
+   ───────────────────────────────────────────────────────────────────────────── */
+#key-helper {
+    dock: bottom;
+    height: 1;
+    color: $text-muted;
+    padding: 0 1;
+    border-top: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MODAL SCREENS
+   ───────────────────────────────────────────────────────────────────────────── */
+ModalScreen {
+    align: center middle;
+    background: $background 80%;
+}
+
+#change-dir-modal {
+    width: 70;
+    height: 28;
+    border: round $primary;
+    padding: 1 2;
+    background: $surface;
+}
+
+.modal-title {
+    text-align: center;
+    text-style: bold;
+    color: $primary;
+    margin: 0 0 1 0;
+    height: 1;
+}
+
+.modal-subtitle {
+    color: $text-muted;
+    margin: 0;
+    height: 1;
+}
+
+#path-input-section {
+    height: auto;
+    margin: 0 0 1 0;
+}
+
+#dir-input {
+    height: 3;
+    padding: 0 1;
+}
+
+.validation-msg {
+    height: 1;
+    margin: 0;
+    padding: 0;
+}
+
+#nav-buttons {
+    height: 3;
+    margin: 0 0 1 0;
+    align: center middle;
+}
+
+.nav-btn {
+    margin: 0 1;
+    height: 3;
+    width: auto;
+    min-width: 10;
+}
+
+#folder-explorer-section {
+    height: 1fr;
+    border: round $secondary;
+    margin: 0 0 1 0;
+    padding: 0 1;
+}
+
+#folder-tree {
+    height: 1fr;
+}
+
+.modal-buttons {
+    height: 3;
+    align: center middle;
+    dock: bottom;
+}
+
+#btn-modal-cancel {
+    margin-right: 2;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   HELP SCREEN
+   ───────────────────────────────────────────────────────────────────────────── */
+#help-overlay {
+    width: 50;
+    height: auto;
+    max-height: 24;
+    border: round $primary;
+    padding: 1 2;
+}
+
+.help-title {
+    text-align: center;
+    text-style: bold;
+    color: $primary;
+    border-bottom: solid $surface-lighten-2;
+    padding-bottom: 1;
+    margin-bottom: 1;
+    height: auto;
+}
+
+.help-content {
+    height: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   NOTIFICATIONS
+   ───────────────────────────────────────────────────────────────────────────── */
+Toast.-information {
+    border: round $success;
+}
+
+Toast.-warning {
+    border: round $warning;
+}
+
+Toast.-error {
+    border: round $error;
+}
