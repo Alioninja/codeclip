@@ -282,7 +282,6 @@ Button.-active {
 #status-section {
     height: auto;
     min-height: 5;
-    dock: bottom;
     border: round $primary;
     margin-top: -1;
 }
