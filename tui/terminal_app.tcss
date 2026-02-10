@@ -389,7 +389,7 @@ Button.-active {
    ───────────────────────────────────────────────────────────────────────────── */
 #key-helper {
     dock: bottom;
-    height: 1;
+    height: auto;
     color: $text-muted;
     padding: 0 1;
     border-top: none;
@@ -627,5 +627,85 @@ Toast.-error {
     background: $error 30%;
     border: round $error;
     color: $error;
+    text-style: bold;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SETTINGS MODAL
+   ───────────────────────────────────────────────────────────────────────────── */
+#settings-modal {
+    width: 58;
+    height: auto;
+    max-height: 30;
+    border: round $primary;
+    padding: 1 2;
+    background: $surface;
+}
+
+#settings-description {
+    height: auto;
+    margin: 0 0 1 0;
+    padding: 0;
+}
+
+#settings-section {
+    height: auto;
+    padding: 0;
+}
+
+.setting-row {
+    height: auto;
+    margin: 0 0 1 0;
+    padding: 0;
+}
+
+.setting-label {
+    height: 1;
+    color: $text;
+    padding: 0;
+    margin: 0;
+}
+
+#settings-modal Input {
+    height: 3;
+    padding: 0 1;
+}
+
+#settings-validation {
+    height: 1;
+    margin: 0;
+    padding: 0;
+}
+
+#btn-settings-cancel {
+    margin-right: 2;
+    background: transparent;
+    border: round $primary;
+    color: $text;
+    width: auto;
+    min-width: 12;
+}
+
+#btn-settings-cancel:hover,
+#btn-settings-cancel:focus {
+    background: transparent;
+    border: round $accent;
+    color: $accent;
+    text-style: bold;
+}
+
+#btn-settings-save {
+    background: transparent;
+    border: round $success;
+    color: $success;
+    width: auto;
+    min-width: 12;
+}
+
+#btn-settings-save:hover,
+#btn-settings-save:focus {
+    background: transparent;
+    border: round $accent;
+    color: $accent;
     text-style: bold;
 }

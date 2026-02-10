@@ -48,6 +48,48 @@ Just paste into your favorite AI chatbot and ask your question!
 
 ## ⚙️ Installation
 
+### Quick Install (Recommended)
+
+Install globally using pip in editable mode:
+
+```bash
+git clone https://github.com/Alioninja/codeclip.git
+cd codeclip
+pip install -e .
+```
+
+
+Now you can run `codeclip` from anywhere!
+
+### Update Existing Installation
+
+To update to the latest version:
+
+1. Navigate to your cloned directory:
+   ```bash
+   cd codeclip
+   ```
+
+2. Pull the latest changes:
+   ```bash
+   git pull
+   ```
+
+3. Re-install to update dependencies:
+   ```bash
+   pip install -e .
+   ```
+
+### Check Installation
+
+Verify the installed version:
+
+```bash
+pip show codeclip
+```
+
+### Manual Installation
+
 Clone the repository:
 
 ```bash
@@ -66,6 +108,12 @@ pip install -r requirements.txt
 ### 🚀 **Getting Started**
 
 1. Run the application from any directory:
+
+```bash
+codeclip
+```
+
+Or with Python directly:
 
 ```bash
 python .codebase-to-text.py

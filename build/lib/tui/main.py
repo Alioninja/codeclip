@@ -1,17 +1,17 @@
-from pathlib import Path
+pip install -e from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.widgets import Tree, Checkbox, Button, Static
 from textual.containers import Vertical, Horizontal, VerticalScroll, Container
 from textual.binding import Binding
 
-from .config import STATE_FILE
+from .config import STATE_FILE, MAX_FILES_TO_SHOW_ALL, TREE_SHOW_FIRST_FILES, TREE_SHOW_LAST_FILES
 from .core.state import load_state, save_state
 from .core.scanner import scan_file_extensions, build_folder_tree, get_tree_string, walk_tree, node_relative_path, collect_selected_files
 from .core.clipboard import copy_to_clipboard
 from .utils.helpers import get_language
 from .ui.widgets import FormatSelector, KeyHelperBar, NavigationScroll, FileTree, ActionButton, TypeToggle
-from .ui.screens import ChangeDirectoryModal, HelpScreen, CopyProgressModal
+from .ui.screens import ChangeDirectoryModal, HelpScreen, CopyProgressModal, SettingsScreen
 from .ui.formatters import format_output_markdown, format_output_xml, format_output_plain
 
 class CodeClipApp(App):
@@ -45,6 +45,11 @@ class CodeClipApp(App):
         self._output_format = self._state.get("output_format", "markdown")
         self._ext_checkboxes = []
         self._copy_data = {}
+        
+        # Truncation settings (long list summarization)
+        self._max_files_to_show_all = self._state.get("max_files_to_show_all", MAX_FILES_TO_SHOW_ALL)
+        self._tree_show_first = self._state.get("tree_show_first", TREE_SHOW_FIRST_FILES)
+        self._tree_show_last = self._state.get("tree_show_last", TREE_SHOW_LAST_FILES)
         
         # Restore saved theme
         saved_theme = self._state.get("theme", "textual-dark")
@@ -188,10 +193,29 @@ class CodeClipApp(App):
             child = parent_node.add(label, data={"path": folder, "is_dir": True, "selected": True})
             self._add_nodes(child, sub_tree)
         
-        # Add files
-        for file in folder_tree["files"]:
-            label = self._format_label(file, True, is_dir=False)
-            parent_node.add_leaf(label, data={"path": file, "is_dir": False, "selected": True})
+        # Add files with truncation for long lists
+        files = folder_tree["files"]
+        if len(files) > self._max_files_to_show_all:
+            # Show first N files
+            first_files = files[:self._tree_show_first]
+            for file in first_files:
+                label = self._format_label(file, True, is_dir=False)
+                parent_node.add_leaf(label, data={"path": file, "is_dir": False, "selected": True})
+            
+            # Add summary/omitted node
+            last_files = files[-self._tree_show_last:] if self._tree_show_last > 0 else []
+            omitted_count = len(files) - len(first_files) - len(last_files)
+            summary_label = f"  [#d4a520]⋯ ({omitted_count} files omitted) ⋯[/]"
+            parent_node.add_leaf(summary_label, data={"path": "", "is_dir": False, "selected": False, "is_summary": True})
+            
+            # Show last N files
+            for file in last_files:
+                label = self._format_label(file, True, is_dir=False)
+                parent_node.add_leaf(label, data={"path": file, "is_dir": False, "selected": True})
+        else:
+            for file in files:
+                label = self._format_label(file, True, is_dir=False)
+                parent_node.add_leaf(label, data={"path": file, "is_dir": False, "selected": True})
     
     def _format_label(self, name: str, selected, is_dir: bool) -> str:
         """Format a tree node label."""
@@ -280,7 +304,7 @@ class CodeClipApp(App):
         for node in walk_tree(tree.root):
             if not node.data:
                 continue
-            if node.data.get("is_dir"):
+            if node.data.get("is_dir") or node.data.get("is_summary"):
                 continue
             
             rel_path = node_relative_path(node)
@@ -326,7 +350,7 @@ class CodeClipApp(App):
             # Now calculate this folder's state based on all children
             children_states = []
             for child in node.children:
-                if child.data:
+                if child.data and not child.data.get("is_summary"):
                     state = child.data.get("selected", False)
                     children_states.append(state)
             
@@ -359,7 +383,7 @@ class CodeClipApp(App):
         selected = 0
         
         for node in walk_tree(tree.root):
-            if node.data and not node.data.get("is_dir"):
+            if node.data and not node.data.get("is_dir") and not node.data.get("is_summary"):
                 total += 1
                 if node.data.get("selected"):
                     selected += 1
@@ -391,7 +415,7 @@ class CodeClipApp(App):
         selected_files = []
         all_files = []
         for node in walk_tree(tree.root):
-            if not node.data or node.data.get("is_dir"):
+            if not node.data or node.data.get("is_dir") or node.data.get("is_summary"):
                 continue
             rel_path = node_relative_path(node)
             if rel_path:
@@ -414,6 +438,9 @@ class CodeClipApp(App):
             "selected_exts": selected_exts,
             "output_format": self._output_format,
             "theme": self.theme,
+            "max_files_to_show_all": self._max_files_to_show_all,
+            "tree_show_first": self._tree_show_first,
+            "tree_show_last": self._tree_show_last,
         }
         self._state = state
         save_state(state)
@@ -430,6 +457,10 @@ class CodeClipApp(App):
     
     def _do_toggle_selection(self, node):
         """Toggle selection for a node."""
+        # Skip summary/omitted nodes - they are not selectable
+        if node.data.get("is_summary"):
+            return
+        
         current_state = node.data.get("selected", True)
         
         if current_state == "partial" or current_state is False:
@@ -451,7 +482,7 @@ class CodeClipApp(App):
         """Propagate selection state to all children."""
         selected = bool(selected) if selected != "partial" else True
         for child in node.children:
-            if child.data:
+            if child.data and not child.data.get("is_summary"):
                 child.data["selected"] = selected
                 self._refresh_node_label(child)
                 if child.data.get("is_dir"):
@@ -642,7 +673,13 @@ class CodeClipApp(App):
         
         try:
             # Prepare data for formatters
-            tree_string = get_tree_string(self.current_dir, selected_exts if selected_exts else None)
+            tree_string = get_tree_string(
+                self.current_dir, 
+                selected_exts if selected_exts else None,
+                max_files_to_show_all=self._max_files_to_show_all,
+                tree_show_first=self._tree_show_first,
+                tree_show_last=self._tree_show_last,
+            )
             
             # Read file contents with progress updates
             files_content = []
@@ -764,7 +801,7 @@ class CodeClipApp(App):
         """Select all files in the tree."""
         tree = self.query_one("#file-tree", FileTree)
         for node in walk_tree(tree.root):
-            if node.data:
+            if node.data and not node.data.get("is_summary"):
                 node.data["selected"] = True
                 self._refresh_node_label(node)
         self._update_dir_selection_states()
@@ -775,7 +812,7 @@ class CodeClipApp(App):
         """Deselect all files in the tree."""
         tree = self.query_one("#file-tree", FileTree)
         for node in walk_tree(tree.root):
-            if node.data:
+            if node.data and not node.data.get("is_summary"):
                 node.data["selected"] = False
                 self._refresh_node_label(node)
         self._update_dir_selection_states()
@@ -795,6 +832,36 @@ class CodeClipApp(App):
     def action_toggle_help(self):
         """Toggle help screen."""
         self.push_screen(HelpScreen())
+    
+    def action_open_settings(self) -> None:
+        """Open settings to configure long list summarization thresholds."""
+        self.push_screen(
+            SettingsScreen(
+                max_files_to_show_all=self._max_files_to_show_all,
+                tree_show_first=self._tree_show_first,
+                tree_show_last=self._tree_show_last,
+            ),
+            self._on_settings_changed,
+        )
+    
+    def _on_settings_changed(self, result):
+        """Handle settings change from modal."""
+        if result is None:
+            return
+        changed = False
+        if result["max_files_to_show_all"] != self._max_files_to_show_all:
+            self._max_files_to_show_all = result["max_files_to_show_all"]
+            changed = True
+        if result["tree_show_first"] != self._tree_show_first:
+            self._tree_show_first = result["tree_show_first"]
+            changed = True
+        if result["tree_show_last"] != self._tree_show_last:
+            self._tree_show_last = result["tree_show_last"]
+            changed = True
+        if changed:
+            self._persist_state()
+            self.load_directory()
+            self.notify("Settings updated – tree reloaded", severity="information")
     
     def action_refresh(self):
         """Refresh the current directory."""

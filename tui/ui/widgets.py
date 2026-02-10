@@ -274,7 +274,7 @@ class KeyHelperBar(Static):
     DEFAULT_CSS = """
     KeyHelperBar {
         dock: bottom;
-        height: 1;
+        height: auto;
         background: #0a0a0a;
         color: #606060;
         padding: 0 1;

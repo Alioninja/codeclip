@@ -3,7 +3,7 @@ from pathlib import Path
 from textual.screen import ModalScreen
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Static, Input, Button, DirectoryTree, ProgressBar
+from textual.widgets import Static, Input, Button, DirectoryTree, ProgressBar, Label
 from textual.binding import Binding
 from .widgets import PathSuggester, FolderOnlyTree
 
@@ -308,6 +308,7 @@ class HelpScreen(ModalScreen):
   [#e4e4e4]c[/]         Change directory
   [#e4e4e4]g[/]         Generate and copy to clipboard
   [#e4e4e4]r[/]         Refresh tree
+  [#e4e4e4]m[/]         Open menu (settings, etc.)
 
 [bold #7f9825]General[/]
   [#e4e4e4]h / ?[/]     Toggle this help
@@ -386,3 +387,114 @@ class CopyProgressModal(ModalScreen):
             pass
         # Dismiss with cancelled result
         self.dismiss((False, "Cancelled by user", 0))
+
+
+class SettingsScreen(ModalScreen):
+    """Settings modal for configuring long list summarization thresholds."""
+    
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", priority=True),
+    ]
+    
+    def __init__(
+        self,
+        max_files_to_show_all: int = 25,
+        tree_show_first: int = 10,
+        tree_show_last: int = 3,
+    ):
+        super().__init__()
+        self._max_files_to_show_all = max_files_to_show_all
+        self._tree_show_first = tree_show_first
+        self._tree_show_last = tree_show_last
+    
+    def compose(self) -> ComposeResult:
+        with Container(id="settings-modal"):
+            yield Static("⚙  Settings", classes="modal-title")
+            
+            # Long list summarization section
+            with Vertical(id="settings-section"):
+                yield Static(
+                    "[bold #7f9825]Long List Summarization[/]\n"
+                    "[#808080]When a directory has more files than the threshold below,\n"
+                    "only the first and last N files are shown. The rest are\n"
+                    "omitted with a summary in the tree and clipboard output.[/]",
+                    id="settings-description",
+                )
+                
+                with Vertical(classes="setting-row"):
+                    yield Label("Max files before summarizing:", classes="setting-label")
+                    yield Input(
+                        value=str(self._max_files_to_show_all),
+                        placeholder="25",
+                        id="input-max-files",
+                        type="integer",
+                    )
+                
+                with Vertical(classes="setting-row"):
+                    yield Label("Show first N files:", classes="setting-label")
+                    yield Input(
+                        value=str(self._tree_show_first),
+                        placeholder="10",
+                        id="input-show-first",
+                        type="integer",
+                    )
+                
+                with Vertical(classes="setting-row"):
+                    yield Label("Show last N files:", classes="setting-label")
+                    yield Input(
+                        value=str(self._tree_show_last),
+                        placeholder="3",
+                        id="input-show-last",
+                        type="integer",
+                    )
+                
+                yield Static("", id="settings-validation", classes="validation-msg")
+            
+            # Action buttons
+            with Horizontal(classes="modal-buttons"):
+                yield Button("Cancel", id="btn-settings-cancel", variant="default")
+                yield Button("Save", id="btn-settings-save", variant="primary")
+    
+    def on_mount(self):
+        self.query_one("#input-max-files", Input).focus()
+    
+    def on_button_pressed(self, event: Button.Pressed):
+        if event.button.id == "btn-settings-cancel":
+            self.dismiss(None)
+        elif event.button.id == "btn-settings-save":
+            self._save()
+    
+    def on_input_submitted(self, event: Input.Submitted):
+        """Save on Enter from any input."""
+        self._save()
+    
+    def _save(self):
+        """Validate and save settings."""
+        validation = self.query_one("#settings-validation", Static)
+        
+        try:
+            max_files = int(self.query_one("#input-max-files", Input).value)
+            show_first = int(self.query_one("#input-show-first", Input).value)
+            show_last = int(self.query_one("#input-show-last", Input).value)
+        except (ValueError, TypeError):
+            validation.update("[#c73030]✗ All values must be positive integers[/]")
+            return
+        
+        if max_files < 1:
+            validation.update("[#c73030]✗ Max files must be at least 1[/]")
+            return
+        if show_first < 0 or show_last < 0:
+            validation.update("[#c73030]✗ Show first/last cannot be negative[/]")
+            return
+        if show_first + show_last >= max_files:
+            validation.update("[#c73030]✗ First + Last must be less than max threshold[/]")
+            return
+        
+        self.dismiss({
+            "max_files_to_show_all": max_files,
+            "tree_show_first": show_first,
+            "tree_show_last": show_last,
+        })
+    
+    def action_cancel(self):
+        self.dismiss(None)
