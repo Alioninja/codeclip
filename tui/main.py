@@ -11,7 +11,7 @@ from .core.state import load_state, save_state
 from .core.scanner import scan_file_extensions, build_folder_tree, get_tree_string, walk_tree, node_relative_path, collect_selected_files
 from .core.clipboard import copy_to_clipboard
 from .utils.helpers import get_language
-from .ui.widgets import FormatSelector, KeyHelperBar, NavigationScroll, FileTree, ActionButton, TypeToggle
+from .ui.widgets import FormatSelector, KeyHelperBar, NavigationScroll, FileTree, TypeToggle
 from .ui.screens import ChangeDirectoryModal, HelpScreen, CopyProgressModal, SettingsScreen
 from .ui.formatters import format_output_markdown, format_output_xml, format_output_plain
 
@@ -114,15 +114,7 @@ class CodeClipApp(App):
                     yield Static("📄 format", classes="section-title")
                     yield FormatSelector(initial_format=self._output_format, id="format-selector")
                 
-                # Controls section
-                with Vertical(id="controls-section", classes="section-box"):
-                    yield Static("⚡ actions", classes="section-title")
-                    with Vertical(id="controls-container"):
-                        yield ActionButton("📋 Copy to Clipboard", id="btn-generate", classes="control-btn primary-btn")
-                        with Horizontal(id="select-buttons"):
-                            yield ActionButton("Select All", id="btn-select-all", classes="control-btn half-btn")
-                            yield ActionButton("Clear All", id="btn-deselect-all", classes="control-btn half-btn")
-                        yield ActionButton("📁 Change Directory", id="btn-change-dir", classes="control-btn")
+
                 
                 # Status section
                 with Vertical(id="status-section", classes="section-box"):
@@ -529,15 +521,7 @@ class CodeClipApp(App):
     def on_button_pressed(self, event: Button.Pressed):
         """Handle button presses."""
         btn_id = event.button.id
-        if btn_id == "btn-generate":
-            self.action_generate()
-        elif btn_id == "btn-select-all":
-            self.action_select_all()
-        elif btn_id == "btn-deselect-all":
-            self.action_deselect_all()
-        elif btn_id == "btn-change-dir":
-            self.action_change_dir()
-        elif btn_id == "btn-all-types":
+        if btn_id == "btn-all-types":
             self._select_all_types()
         elif btn_id == "btn-no-types":
             self._deselect_all_types()
@@ -559,7 +543,7 @@ class CodeClipApp(App):
         self._persist_state()
     
     # Section focus order: file-tree -> file-types-container -> format-selector -> btn-generate
-    _FOCUS_SECTIONS = ["#file-tree", "#file-types-container", "#format-selector", "#btn-generate"]
+    _FOCUS_SECTIONS = ["#file-tree", "#file-types-container", "#format-selector"]
     _current_section_idx = 0
     
     def action_focus_next_section(self):
