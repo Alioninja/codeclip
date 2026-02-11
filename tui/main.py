@@ -6,12 +6,15 @@ from textual.containers import Vertical, Horizontal, VerticalScroll, Container
 from textual.binding import Binding
 from textual.command import Provider, Hit, DiscoveryHit
 
-from .config import STATE_FILE, MAX_FILES_TO_SHOW_ALL, TREE_SHOW_FIRST_FILES, TREE_SHOW_LAST_FILES
+from .config import (
+    STATE_FILE, MAX_FILES_TO_SHOW_ALL, TREE_SHOW_FIRST_FILES, TREE_SHOW_LAST_FILES,
+    MAX_DIRS_TO_SHOW_ALL, TREE_SHOW_FIRST_DIRS, TREE_SHOW_LAST_DIRS
+)
 from .core.state import load_state, save_state
 from .core.scanner import scan_file_extensions, build_folder_tree, get_tree_string, walk_tree, node_relative_path, collect_selected_files
 from .core.clipboard import copy_to_clipboard
 from .utils.helpers import get_language
-from .ui.widgets import FormatSelector, KeyHelperBar, NavigationScroll, FileTree, TypeToggle
+from .ui.widgets import KeyHelperBar, NavigationScroll, FileTree, TypeToggle
 from .ui.screens import ChangeDirectoryModal, HelpScreen, CopyProgressModal, SettingsScreen
 from .ui.formatters import format_output_markdown, format_output_xml, format_output_plain
 
@@ -80,6 +83,11 @@ class CodeClipApp(App):
         self._max_files_to_show_all = self._state.get("max_files_to_show_all", MAX_FILES_TO_SHOW_ALL)
         self._tree_show_first = self._state.get("tree_show_first", TREE_SHOW_FIRST_FILES)
         self._tree_show_last = self._state.get("tree_show_last", TREE_SHOW_LAST_FILES)
+
+        # Directory truncation settings (long list summarization for folders)
+        self._max_dirs_to_show_all = self._state.get("max_dirs_to_show_all", MAX_DIRS_TO_SHOW_ALL)
+        self._tree_show_first_dirs = self._state.get("tree_show_first_dirs", TREE_SHOW_FIRST_DIRS)
+        self._tree_show_last_dirs = self._state.get("tree_show_last_dirs", TREE_SHOW_LAST_DIRS)
         
         # Restore saved theme
         saved_theme = self._state.get("theme", "textual-dark")
@@ -109,13 +117,7 @@ class CodeClipApp(App):
                     # Use NavigationScroll to allow arrow keys to bubble
                     yield NavigationScroll(id="file-types-container")
                 
-                # Format section
-                with Vertical(id="format-section", classes="section-box"):
-                    yield Static("📄 format", classes="section-title")
-                    yield FormatSelector(initial_format=self._output_format, id="format-selector")
-                
 
-                
                 # Status section
                 with Vertical(id="status-section", classes="section-box"):
                     yield Static("📊 status", classes="section-title")
@@ -155,11 +157,6 @@ class CodeClipApp(App):
         except Exception:
             pass
 
-    def on_format_selector_format_changed(self, event: FormatSelector.FormatChanged):
-        """Handle format changes from FormatSelector."""
-        self._output_format = event.format
-        self._persist_state()
-    
     def watch_theme(self, theme: str) -> None:
         """Watch for theme changes and persist them."""
         self._persist_state()
@@ -206,15 +203,33 @@ class CodeClipApp(App):
     
     def _add_nodes(self, parent_node, folder_tree):
         """Recursively add nodes to the tree."""
-        # Add folders first (only if they contain files somewhere)
-        for folder, sub_tree in sorted(folder_tree["subfolders"].items()):
-            if not self._has_files(sub_tree):
-                # Skip empty folders (no files in this folder or any subfolder)
-                continue
-            label = self._format_label(folder, True, is_dir=True)
-            child = parent_node.add(label, data={"path": folder, "is_dir": True, "selected": True})
-            self._add_nodes(child, sub_tree)
-        
+        # Add folders first (only if they contain files somewhere), with truncation for long lists
+        sorted_folders = [(folder, sub_tree) for folder, sub_tree in sorted(folder_tree["subfolders"].items())
+                          if self._has_files(sub_tree)]
+
+        if len(sorted_folders) > self._max_dirs_to_show_all:
+            first_dirs = sorted_folders[:self._tree_show_first_dirs]
+            last_dirs = sorted_folders[-self._tree_show_last_dirs:] if self._tree_show_last_dirs > 0 else []
+            omitted_dir_count = len(sorted_folders) - len(first_dirs) - len(last_dirs)
+
+            for folder, sub_tree in first_dirs:
+                label = self._format_label(folder, True, is_dir=True)
+                child = parent_node.add(label, data={"path": folder, "is_dir": True, "selected": True})
+                self._add_nodes(child, sub_tree)
+
+            summary_label = f"  [#d4a520]⋯ ({omitted_dir_count} dirs omitted) ⋯[/]"
+            parent_node.add_leaf(summary_label, data={"path": "", "is_dir": False, "selected": False, "is_summary": True})
+
+            for folder, sub_tree in last_dirs:
+                label = self._format_label(folder, True, is_dir=True)
+                child = parent_node.add(label, data={"path": folder, "is_dir": True, "selected": True})
+                self._add_nodes(child, sub_tree)
+        else:
+            for folder, sub_tree in sorted_folders:
+                label = self._format_label(folder, True, is_dir=True)
+                child = parent_node.add(label, data={"path": folder, "is_dir": True, "selected": True})
+                self._add_nodes(child, sub_tree)
+
         # Add files with truncation for long lists
         files = folder_tree["files"]
         if len(files) > self._max_files_to_show_all:
@@ -223,13 +238,13 @@ class CodeClipApp(App):
             for file in first_files:
                 label = self._format_label(file, True, is_dir=False)
                 parent_node.add_leaf(label, data={"path": file, "is_dir": False, "selected": True})
-            
+
             # Add summary/omitted node
             last_files = files[-self._tree_show_last:] if self._tree_show_last > 0 else []
             omitted_count = len(files) - len(first_files) - len(last_files)
             summary_label = f"  [#d4a520]⋯ ({omitted_count} files omitted) ⋯[/]"
             parent_node.add_leaf(summary_label, data={"path": "", "is_dir": False, "selected": False, "is_summary": True})
-            
+
             # Show last N files
             for file in last_files:
                 label = self._format_label(file, True, is_dir=False)
@@ -463,6 +478,9 @@ class CodeClipApp(App):
             "max_files_to_show_all": self._max_files_to_show_all,
             "tree_show_first": self._tree_show_first,
             "tree_show_last": self._tree_show_last,
+            "max_dirs_to_show_all": self._max_dirs_to_show_all,
+            "tree_show_first_dirs": self._tree_show_first_dirs,
+            "tree_show_last_dirs": self._tree_show_last_dirs,
         }
         self._state = state
         save_state(state)
@@ -543,7 +561,7 @@ class CodeClipApp(App):
         self._persist_state()
     
     # Section focus order: file-tree -> file-types-container -> format-selector -> btn-generate
-    _FOCUS_SECTIONS = ["#file-tree", "#file-types-container", "#format-selector"]
+    _FOCUS_SECTIONS = ["#file-tree", "#file-types-container"]
     _current_section_idx = 0
     
     def action_focus_next_section(self):
@@ -567,14 +585,6 @@ class CodeClipApp(App):
                     container.children[0].focus()
                 else:
                     container.focus()
-            elif selector == "#format-selector":
-                # Focus the active format button
-                selector_widget = self.query_one(selector, FormatSelector)
-                fmt = selector_widget.current_format
-                try:
-                    self.query_one(f"#fmt-{fmt}", Button).focus()
-                except:
-                    selector_widget.focus()
             else:
                 widget = self.query_one(selector)
                 widget.focus()
@@ -688,11 +698,14 @@ class CodeClipApp(App):
         try:
             # Prepare data for formatters
             tree_string = get_tree_string(
-                self.current_dir, 
+                self.current_dir,
                 selected_exts if selected_exts else None,
                 max_files_to_show_all=self._max_files_to_show_all,
                 tree_show_first=self._tree_show_first,
                 tree_show_last=self._tree_show_last,
+                max_dirs_to_show_all=self._max_dirs_to_show_all,
+                tree_show_first_dirs=self._tree_show_first_dirs,
+                tree_show_last_dirs=self._tree_show_last_dirs,
             )
             
             # Read file contents with progress updates
@@ -854,10 +867,14 @@ class CodeClipApp(App):
                 max_files_to_show_all=self._max_files_to_show_all,
                 tree_show_first=self._tree_show_first,
                 tree_show_last=self._tree_show_last,
+                max_dirs_to_show_all=self._max_dirs_to_show_all,
+                tree_show_first_dirs=self._tree_show_first_dirs,
+                tree_show_last_dirs=self._tree_show_last_dirs,
+                current_format=self._output_format,
             ),
             self._on_settings_changed,
         )
-    
+
     def _on_settings_changed(self, result):
         """Handle settings change from modal."""
         if result is None:
@@ -871,6 +888,18 @@ class CodeClipApp(App):
             changed = True
         if result["tree_show_last"] != self._tree_show_last:
             self._tree_show_last = result["tree_show_last"]
+            changed = True
+        if result["max_dirs_to_show_all"] != self._max_dirs_to_show_all:
+            self._max_dirs_to_show_all = result["max_dirs_to_show_all"]
+            changed = True
+        if result["tree_show_first_dirs"] != self._tree_show_first_dirs:
+            self._tree_show_first_dirs = result["tree_show_first_dirs"]
+            changed = True
+        if result["tree_show_last_dirs"] != self._tree_show_last_dirs:
+            self._tree_show_last_dirs = result["tree_show_last_dirs"]
+            changed = True
+        if result.get("output_format") and result["output_format"] != self._output_format:
+            self._output_format = result["output_format"]
             changed = True
         if changed:
             self._persist_state()

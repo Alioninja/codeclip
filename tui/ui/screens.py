@@ -2,10 +2,73 @@ import os
 from pathlib import Path
 from textual.screen import ModalScreen
 from textual.app import ComposeResult
-from textual.containers import Container, Vertical, Horizontal
+from textual.containers import Container, Vertical, Horizontal, VerticalScroll
 from textual.widgets import Static, Input, Button, DirectoryTree, ProgressBar, Label
 from textual.binding import Binding
+from textual.message import Message
 from .widgets import PathSuggester, FolderOnlyTree
+
+
+class FormatOption(Static):
+    """A custom radio-style option widget with proper focus/hover support."""
+
+    can_focus = True
+
+    BINDINGS = [
+        Binding("space", "select", "Select", show=False),
+        Binding("enter", "select", "Select", show=False),
+        Binding("left", "focus_prev_option", "Previous", show=False),
+        Binding("right", "focus_next_option", "Next", show=False),
+    ]
+
+    class Selected(Message):
+        """Posted when this option is selected."""
+        def __init__(self, option: "FormatOption"):
+            self.option = option
+            super().__init__()
+
+    def __init__(self, label: str, format_key: str, selected: bool = False, **kwargs):
+        super().__init__(**kwargs)
+        self.label_text = label
+        self.format_key = format_key
+        self.selected = selected
+
+    def on_mount(self):
+        self._refresh_display()
+
+    def _refresh_display(self):
+        icon = "●" if self.selected else "○"
+        self.update(f"{icon} {self.label_text}")
+
+    def set_selected(self, value: bool):
+        self.selected = value
+        self._refresh_display()
+
+    def action_select(self):
+        self.post_message(self.Selected(self))
+
+    def on_click(self):
+        self.post_message(self.Selected(self))
+
+    def action_focus_prev_option(self):
+        self._move_focus(-1)
+
+    def action_focus_next_option(self):
+        self._move_focus(1)
+
+    def _move_focus(self, direction: int):
+        parent = self.parent
+        if not parent:
+            return
+        siblings = [c for c in parent.children if isinstance(c, FormatOption)]
+        if not siblings:
+            return
+        try:
+            idx = siblings.index(self)
+            new_idx = (idx + direction) % len(siblings)
+            siblings[new_idx].focus()
+        except ValueError:
+            pass
 
 class ChangeDirectoryModal(ModalScreen):
     """Modal for changing the project directory with mini file explorer."""
@@ -391,110 +454,268 @@ class CopyProgressModal(ModalScreen):
 
 class SettingsScreen(ModalScreen):
     """Settings modal for configuring long list summarization thresholds."""
-    
+
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", priority=True),
+        Binding("tab", "settings_focus_next", "Next", priority=True),
+        Binding("shift+tab", "settings_focus_prev", "Previous", priority=True),
+        Binding("left", "btn_prev", "Previous", show=False),
+        Binding("right", "btn_next", "Next", show=False),
     ]
-    
+
+    FOCUS_ORDER = [
+        "#input-max-files",
+        "#input-show-first",
+        "#input-show-last",
+        "#input-max-dirs",
+        "#input-show-first-dirs",
+        "#input-show-last-dirs",
+        "#fmt-markdown",
+        "#btn-settings-cancel",
+        "#btn-settings-save",
+    ]
+
+    FORMAT_MAP = [
+        ("markdown", "Markdown"),
+        ("xml", "XML"),
+        ("plain", "Plain Text"),
+    ]
+
     def __init__(
         self,
         max_files_to_show_all: int = 25,
         tree_show_first: int = 10,
         tree_show_last: int = 3,
+        max_dirs_to_show_all: int = 25,
+        tree_show_first_dirs: int = 10,
+        tree_show_last_dirs: int = 3,
+        current_format: str = "markdown",
     ):
         super().__init__()
         self._max_files_to_show_all = max_files_to_show_all
         self._tree_show_first = tree_show_first
         self._tree_show_last = tree_show_last
-    
+        self._max_dirs_to_show_all = max_dirs_to_show_all
+        self._tree_show_first_dirs = tree_show_first_dirs
+        self._tree_show_last_dirs = tree_show_last_dirs
+        self._current_format = current_format
+
     def compose(self) -> ComposeResult:
         with Container(id="settings-modal"):
-            yield Static("⚙  Settings", classes="modal-title")
-            
-            # Long list summarization section
-            with Vertical(id="settings-section"):
-                yield Static(
-                    "[bold #7f9825]Long List Summarization[/]\n"
-                    "[#808080]When a directory has more files than the threshold below,\n"
-                    "only the first and last N files are shown. The rest are\n"
-                    "omitted with a summary in the tree and clipboard output.[/]",
-                    id="settings-description",
-                )
-                
-                with Vertical(classes="setting-row"):
-                    yield Label("Max files before summarizing:", classes="setting-label")
-                    yield Input(
-                        value=str(self._max_files_to_show_all),
-                        placeholder="25",
-                        id="input-max-files",
-                        type="integer",
+            yield Static("⚙  Settings", id="settings-title", classes="modal-title")
+
+            # Scrollable content area
+            with VerticalScroll(id="settings-scroll"):
+                # Two-column layout: files left, directories right
+                with Horizontal(id="settings-columns"):
+                    # File long list summarization section (left column)
+                    with Vertical(id="settings-section"):
+                        yield Static(
+                            "[bold #7f9825]File Summarization[/]\n"
+                            "[#808080]When a directory has more\n"
+                            "files than the threshold,\n"
+                            "only first/last N are shown.[/]",
+                            id="settings-description",
+                        )
+
+                        with Vertical(classes="setting-row"):
+                            yield Label("Max files before summarizing:", classes="setting-label")
+                            yield Input(
+                                value=str(self._max_files_to_show_all),
+                                placeholder="25",
+                                id="input-max-files",
+                                type="integer",
+                            )
+
+                        with Vertical(classes="setting-row"):
+                            yield Label("Show first N files:", classes="setting-label")
+                            yield Input(
+                                value=str(self._tree_show_first),
+                                placeholder="10",
+                                id="input-show-first",
+                                type="integer",
+                            )
+
+                        with Vertical(classes="setting-row"):
+                            yield Label("Show last N files:", classes="setting-label")
+                            yield Input(
+                                value=str(self._tree_show_last),
+                                placeholder="3",
+                                id="input-show-last",
+                                type="integer",
+                            )
+
+                    # Directory long list summarization section (right column)
+                    with Vertical(id="settings-section-dirs"):
+                        yield Static(
+                            "[bold #7f9825]Directory Summarization[/]\n"
+                            "[#808080]When a directory has more\n"
+                            "subdirs than the threshold,\n"
+                            "only first/last N are shown.[/]",
+                            id="settings-description-dirs",
+                        )
+
+                        with Vertical(classes="setting-row"):
+                            yield Label("Max dirs before summarizing:", classes="setting-label")
+                            yield Input(
+                                value=str(self._max_dirs_to_show_all),
+                                placeholder="25",
+                                id="input-max-dirs",
+                                type="integer",
+                            )
+
+                        with Vertical(classes="setting-row"):
+                            yield Label("Show first N dirs:", classes="setting-label")
+                            yield Input(
+                                value=str(self._tree_show_first_dirs),
+                                placeholder="10",
+                                id="input-show-first-dirs",
+                                type="integer",
+                            )
+
+                        with Vertical(classes="setting-row"):
+                            yield Label("Show last N dirs:", classes="setting-label")
+                            yield Input(
+                                value=str(self._tree_show_last_dirs),
+                                placeholder="3",
+                                id="input-show-last-dirs",
+                                type="integer",
+                            )
+
+                # Output format section (full width)
+                with Vertical(id="settings-format-section"):
+                    yield Static(
+                        "[bold #7f9825]Output Format[/]",
+                        id="settings-format-label",
                     )
-                
-                with Vertical(classes="setting-row"):
-                    yield Label("Show first N files:", classes="setting-label")
-                    yield Input(
-                        value=str(self._tree_show_first),
-                        placeholder="10",
-                        id="input-show-first",
-                        type="integer",
-                    )
-                
-                with Vertical(classes="setting-row"):
-                    yield Label("Show last N files:", classes="setting-label")
-                    yield Input(
-                        value=str(self._tree_show_last),
-                        placeholder="3",
-                        id="input-show-last",
-                        type="integer",
-                    )
-                
-                yield Static("", id="settings-validation", classes="validation-msg")
-            
-            # Action buttons
-            with Horizontal(classes="modal-buttons"):
+                    with Horizontal(id="settings-format-options"):
+                        for fmt_key, fmt_label in self.FORMAT_MAP:
+                            yield FormatOption(
+                                fmt_label,
+                                format_key=fmt_key,
+                                selected=(fmt_key == self._current_format),
+                                id=f"fmt-{fmt_key}",
+                            )
+
+            yield Static("", id="settings-validation", classes="validation-msg")
+
+            # Action buttons (always visible at bottom)
+            with Horizontal(id="settings-buttons", classes="modal-buttons"):
                 yield Button("Cancel", id="btn-settings-cancel", variant="default")
                 yield Button("Save", id="btn-settings-save", variant="primary")
-    
+
     def on_mount(self):
         self.query_one("#input-max-files", Input).focus()
-    
+
+    def _get_focusable_widgets(self):
+        """Get list of focusable widgets in order."""
+        widgets = []
+        for selector in self.FOCUS_ORDER:
+            try:
+                widget = self.query_one(selector)
+                if widget.can_focus:
+                    widgets.append(widget)
+            except Exception:
+                pass
+        return widgets
+
+    def action_settings_focus_next(self):
+        """Focus next widget within settings modal."""
+        widgets = self._get_focusable_widgets()
+        if not widgets:
+            return
+        focused = self.app.focused
+        try:
+            idx = widgets.index(focused)
+            next_idx = (idx + 1) % len(widgets)
+        except ValueError:
+            next_idx = 0
+        widgets[next_idx].focus()
+
+    def action_settings_focus_prev(self):
+        """Focus previous widget within settings modal."""
+        widgets = self._get_focusable_widgets()
+        if not widgets:
+            return
+        focused = self.app.focused
+        try:
+            idx = widgets.index(focused)
+            prev_idx = (idx - 1) % len(widgets)
+        except ValueError:
+            prev_idx = len(widgets) - 1
+        widgets[prev_idx].focus()
+
+    def action_btn_prev(self):
+        """Focus previous button when on a settings button."""
+        focused = self.app.focused
+        if focused and focused.id == "btn-settings-save":
+            self.query_one("#btn-settings-cancel", Button).focus()
+
+    def action_btn_next(self):
+        """Focus next button when on a settings button."""
+        focused = self.app.focused
+        if focused and focused.id == "btn-settings-cancel":
+            self.query_one("#btn-settings-save", Button).focus()
+
     def on_button_pressed(self, event: Button.Pressed):
         if event.button.id == "btn-settings-cancel":
             self.dismiss(None)
         elif event.button.id == "btn-settings-save":
             self._save()
-    
+
+    def on_format_option_selected(self, event: FormatOption.Selected):
+        """Handle format option selection - update all options."""
+        for option in self.query(FormatOption):
+            option.set_selected(option is event.option)
+
     def on_input_submitted(self, event: Input.Submitted):
         """Save on Enter from any input."""
         self._save()
-    
+
     def _save(self):
         """Validate and save settings."""
         validation = self.query_one("#settings-validation", Static)
-        
+
         try:
             max_files = int(self.query_one("#input-max-files", Input).value)
             show_first = int(self.query_one("#input-show-first", Input).value)
             show_last = int(self.query_one("#input-show-last", Input).value)
+            max_dirs = int(self.query_one("#input-max-dirs", Input).value)
+            show_first_dirs = int(self.query_one("#input-show-first-dirs", Input).value)
+            show_last_dirs = int(self.query_one("#input-show-last-dirs", Input).value)
         except (ValueError, TypeError):
             validation.update("[#c73030]✗ All values must be positive integers[/]")
             return
-        
-        if max_files < 1:
-            validation.update("[#c73030]✗ Max files must be at least 1[/]")
+
+        if max_files < 1 or max_dirs < 1:
+            validation.update("[#c73030]✗ Max thresholds must be at least 1[/]")
             return
-        if show_first < 0 or show_last < 0:
+        if show_first < 0 or show_last < 0 or show_first_dirs < 0 or show_last_dirs < 0:
             validation.update("[#c73030]✗ Show first/last cannot be negative[/]")
             return
         if show_first + show_last >= max_files:
-            validation.update("[#c73030]✗ First + Last must be less than max threshold[/]")
+            validation.update("[#c73030]✗ File first + last must be less than max files[/]")
             return
-        
+        if show_first_dirs + show_last_dirs >= max_dirs:
+            validation.update("[#c73030]✗ Dir first + last must be less than max dirs[/]")
+            return
+
+        # Get selected format from FormatOption widgets
+        output_format = self._current_format
+        for option in self.query(FormatOption):
+            if option.selected:
+                output_format = option.format_key
+                break
+
         self.dismiss({
             "max_files_to_show_all": max_files,
             "tree_show_first": show_first,
             "tree_show_last": show_last,
+            "max_dirs_to_show_all": max_dirs,
+            "tree_show_first_dirs": show_first_dirs,
+            "tree_show_last_dirs": show_last_dirs,
+            "output_format": output_format,
         })
-    
+
     def action_cancel(self):
         self.dismiss(None)

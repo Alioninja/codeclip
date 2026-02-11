@@ -3,7 +3,8 @@ from collections import Counter
 from ..config import (
     MAX_INITIAL_SCAN_DEPTH, MAX_FILES_PER_DIR_SCAN,
     IGNORED_DIRS, IGNORED_FILES,
-    MAX_FILES_TO_SHOW_ALL, TREE_SHOW_FIRST_FILES, TREE_SHOW_LAST_FILES
+    MAX_FILES_TO_SHOW_ALL, TREE_SHOW_FIRST_FILES, TREE_SHOW_LAST_FILES,
+    MAX_DIRS_TO_SHOW_ALL, TREE_SHOW_FIRST_DIRS, TREE_SHOW_LAST_DIRS
 )
 from ..utils.helpers import (
     is_ignored_dir, is_ignored_file, path_contains_ignored_dir
@@ -103,12 +104,16 @@ def build_folder_tree(base_path, max_depth=None, current_depth=0):
 
 
 def get_tree_string(start_path, allowed_extensions=None,
-                    max_files_to_show_all=None, tree_show_first=None, tree_show_last=None):
+                    max_files_to_show_all=None, tree_show_first=None, tree_show_last=None,
+                    max_dirs_to_show_all=None, tree_show_first_dirs=None, tree_show_last_dirs=None):
     """Generate a string representation of the directory tree.
-    
+
     When a directory has more files than max_files_to_show_all, only the first
     tree_show_first and last tree_show_last files are shown, with a summary
     message indicating how many files were omitted.
+
+    The same logic applies to directories using the max_dirs_to_show_all,
+    tree_show_first_dirs, and tree_show_last_dirs parameters.
     """
     start_path = Path(start_path)
     if path_contains_ignored_dir(str(start_path)):
@@ -121,6 +126,12 @@ def get_tree_string(start_path, allowed_extensions=None,
         tree_show_first = TREE_SHOW_FIRST_FILES
     if tree_show_last is None:
         tree_show_last = TREE_SHOW_LAST_FILES
+    if max_dirs_to_show_all is None:
+        max_dirs_to_show_all = MAX_DIRS_TO_SHOW_ALL
+    if tree_show_first_dirs is None:
+        tree_show_first_dirs = TREE_SHOW_FIRST_DIRS
+    if tree_show_last_dirs is None:
+        tree_show_last_dirs = TREE_SHOW_LAST_DIRS
 
     lines = []
     
@@ -129,41 +140,77 @@ def get_tree_string(start_path, allowed_extensions=None,
             entries = list(path.iterdir())
             dirs = sorted([e for e in entries if e.is_dir() and not is_ignored_dir(e.name)], key=lambda e: e.name.lower())
             files = sorted([e for e in entries if e.is_file() and not is_ignored_file(e.name)], key=lambda e: e.name.lower())
-            
+
             if allowed_extensions:
                 files = [f for f in files if f.suffix.lower() in allowed_extensions]
-            
+
+            # Apply directory list truncation for long lists
+            dirs_to_show = dirs
+            dirs_omitted_count = 0
+            if len(dirs) > max_dirs_to_show_all:
+                first_dirs = dirs[:tree_show_first_dirs]
+                last_dirs = dirs[-tree_show_last_dirs:] if tree_show_last_dirs > 0 else []
+                dirs_to_show = first_dirs + last_dirs
+                dirs_omitted_count = len(dirs) - len(dirs_to_show)
+
             # Apply file list truncation for long lists
             files_to_show = files
-            omitted_count = 0
+            files_omitted_count = 0
             if len(files) > max_files_to_show_all:
                 first_files = files[:tree_show_first]
                 last_files = files[-tree_show_last:] if tree_show_last > 0 else []
                 files_to_show = first_files + last_files
-                omitted_count = len(files) - len(files_to_show)
-            
-            all_entries = dirs + files_to_show
-            files_start_idx = len(dirs)
-            omitted_inserted = False
-            
+                files_omitted_count = len(files) - len(files_to_show)
+
+            all_entries = dirs_to_show + files_to_show
+            total_lines = len(all_entries) + (1 if dirs_omitted_count > 0 else 0) + (1 if files_omitted_count > 0 else 0)
+            dirs_section_len = len(dirs_to_show) + (1 if dirs_omitted_count > 0 else 0)
+            line_idx = 0
+            dirs_omitted_inserted = False
+            files_omitted_inserted = False
+
             for i, entry in enumerate(all_entries):
-                # Insert omitted message between first and last files
-                if (omitted_count > 0 and not omitted_inserted 
-                        and i >= files_start_idx + tree_show_first):
-                    omitted_inserted = True
-                    # Use normal connector since there are more entries after
-                    lines.append(f"{prefix}├── ... ({omitted_count} files omitted) ...")
-                
-                is_last = i == len(all_entries) - 1
-                pointer = "└── " if is_last else "├── "
-                
+                # Insert dirs omitted message between first and last dirs
+                if (dirs_omitted_count > 0 and not dirs_omitted_inserted
+                        and i >= tree_show_first_dirs and i < len(dirs_to_show)):
+                    dirs_omitted_inserted = True
+                    is_last_line = line_idx == total_lines - 1
+                    pointer = "└── " if is_last_line else "├── "
+                    lines.append(f"{prefix}{pointer}... ({dirs_omitted_count} dirs omitted) ...")
+                    line_idx += 1
+
+                # Insert files omitted message between first and last files
+                files_idx = i - len(dirs_to_show)
+                if (files_omitted_count > 0 and not files_omitted_inserted
+                        and files_idx >= 0 and files_idx >= tree_show_first):
+                    files_omitted_inserted = True
+                    is_last_line = line_idx == total_lines - 1
+                    pointer = "└── " if is_last_line else "├── "
+                    lines.append(f"{prefix}{pointer}... ({files_omitted_count} files omitted) ...")
+                    line_idx += 1
+
+                is_last_line = line_idx == total_lines - 1
+                pointer = "└── " if is_last_line else "├── "
+
                 if entry.is_dir():
                     lines.append(f"{prefix}{pointer}{entry.name}/")
-                    extension = "    " if is_last else "│   "
+                    extension = "    " if is_last_line else "│   "
                     if not path_contains_ignored_dir(str(entry)):
                         walk(entry, prefix + extension)
                 else:
                     lines.append(f"{prefix}{pointer}{entry.name}")
+                line_idx += 1
+
+            # Handle edge case: omitted messages at the end when no trailing entries
+            if dirs_omitted_count > 0 and not dirs_omitted_inserted:
+                is_last_line = line_idx == total_lines - 1
+                pointer = "└── " if is_last_line else "├── "
+                lines.append(f"{prefix}{pointer}... ({dirs_omitted_count} dirs omitted) ...")
+                line_idx += 1
+            if files_omitted_count > 0 and not files_omitted_inserted:
+                is_last_line = line_idx == total_lines - 1
+                pointer = "└── " if is_last_line else "├── "
+                lines.append(f"{prefix}{pointer}... ({files_omitted_count} files omitted) ...")
         except OSError:
             pass
 

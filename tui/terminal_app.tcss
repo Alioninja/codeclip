@@ -212,68 +212,6 @@ Button.-active {
     margin: 0 0 0 1;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   FORMAT SECTION
-   ───────────────────────────────────────────────────────────────────────────── */
-#format-section {
-    height: auto;
-    min-height: 4;
-    border: round $primary;
-    margin-top: -1;
-    margin-bottom: 0;
-}
-
-#format-section:focus-within {
-    border: round $accent;
-}
-
-#format-selector {
-    height: auto;
-    min-height: 3;
-    layout: horizontal;
-    align: center middle;
-    padding: 1 0 0 0;
-    margin: 0;
-}
-
-#format-selector .format-btn {
-    width: 1fr;
-    height: 3;
-    min-width: 5;
-    border: round $primary;
-    background: transparent;
-    color: $text;
-    margin: 0 1 0 0;
-    padding: 0;
-}
-
-#format-selector .format-btn.format-active {
-    background: transparent;
-    border: round $accent;
-    color: $accent;
-    text-style: bold;
-}
-
-#format-selector .format-btn.format-active:focus {
-    background: transparent;
-    border: double $accent;
-    color: $accent;
-    text-style: bold;
-}
-
-#format-selector .format-btn:focus {
-    background: transparent;
-    border: double $accent;
-    color: $accent;
-    text-style: bold;
-}
-
-#format-selector .format-btn:hover {
-    background: transparent;
-    border: double $accent;
-    color: $accent;
-}
-
 
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -378,7 +316,7 @@ ModalScreen {
 .nav-btn:hover,
 .nav-btn:focus {
     background: transparent;
-    border: round $accent;
+    border: double $accent;
     color: $accent;
     text-style: bold;
 }
@@ -412,7 +350,7 @@ ModalScreen {
 #btn-modal-cancel:hover,
 #btn-modal-cancel:focus {
     background: transparent;
-    border: round $accent;
+    border: double $accent;
     color: $accent;
     text-style: bold;
 }
@@ -428,7 +366,7 @@ ModalScreen {
 #btn-modal-confirm:hover,
 #btn-modal-confirm:focus {
     background: transparent;
-    border: round $accent;
+    border: double $accent;
     color: $accent;
     text-style: bold;
 }
@@ -543,7 +481,7 @@ Toast.-error {
 #btn-cancel-copy:hover,
 #btn-cancel-copy:focus {
     background: $error 30%;
-    border: round $error;
+    border: double $error;
     color: $error;
     text-style: bold;
 }
@@ -552,12 +490,26 @@ Toast.-error {
    SETTINGS MODAL
    ───────────────────────────────────────────────────────────────────────────── */
 #settings-modal {
-    width: 58;
-    height: auto;
-    max-height: 30;
+    width: 76;
+    height: 1fr;
+    margin: 2 4;
     border: round $primary;
     padding: 1 2;
     background: $surface;
+}
+
+#settings-title {
+    dock: top;
+}
+
+#settings-scroll {
+    height: 1fr;
+    scrollbar-size: 1 1;
+}
+
+#settings-columns {
+    height: auto;
+    width: 100%;
 }
 
 #settings-description {
@@ -566,9 +518,71 @@ Toast.-error {
     padding: 0;
 }
 
+#settings-description-dirs {
+    height: auto;
+    margin: 0 0 1 0;
+    padding: 0;
+}
+
 #settings-section {
+    width: 1fr;
     height: auto;
     padding: 0;
+    margin-right: 2;
+}
+
+#settings-section-dirs {
+    width: 1fr;
+    height: auto;
+    padding: 0;
+}
+
+#settings-format-section {
+    height: auto;
+    margin-top: 1;
+    padding: 0;
+}
+
+#settings-format-label {
+    height: 1;
+    padding: 0;
+    margin: 0 0 1 0;
+}
+
+#settings-format-options {
+    height: auto;
+    layout: horizontal;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+#settings-format-options FormatOption {
+    width: auto;
+    height: 3;
+    padding: 0 2;
+    margin: 0 1 0 0;
+    background: transparent;
+    color: $text;
+    border: blank;
+    content-align: center middle;
+}
+
+#settings-format-options FormatOption:focus {
+    background: transparent;
+    border: double $accent;
+    color: $accent;
+    text-style: bold;
+}
+
+#settings-format-options FormatOption:hover {
+    background: transparent;
+    border: double $accent;
+    color: $accent;
+}
+
+#settings-buttons {
+    dock: bottom;
 }
 
 .setting-row {
@@ -607,7 +621,7 @@ Toast.-error {
 #btn-settings-cancel:hover,
 #btn-settings-cancel:focus {
     background: transparent;
-    border: round $accent;
+    border: double $accent;
     color: $accent;
     text-style: bold;
 }
@@ -623,7 +637,7 @@ Toast.-error {
 #btn-settings-save:hover,
 #btn-settings-save:focus {
     background: transparent;
-    border: round $accent;
+    border: double $accent;
     color: $accent;
     text-style: bold;
 }

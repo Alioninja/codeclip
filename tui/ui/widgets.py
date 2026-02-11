@@ -224,8 +224,10 @@ class KeyHelperBar(Static):
         parts = []
         for key, desc in self.keys:
             # btop style: Key in white/bold, Desc in gray/dim
-            # Using rich markup
-            parts.append(f"[bold #e0e0e0]{key}[/] [#606060]{desc}[/]")
+            # Use braille blank (\u2800) between key and desc to keep them together.
+            # Rich wraps on characters where str.isspace() is True; \u2800 is not
+            # whitespace so Rich will never break the line between key and desc.
+            parts.append(f"[bold #e0e0e0]{key}[/]\u2800[#606060]{desc}[/]")
         self.update("   ".join(parts))
 
 
