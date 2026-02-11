@@ -29,6 +29,9 @@ STATE_FILE = Path.home() / ".codeclip_state.json"
 # Output formats
 OUTPUT_FORMATS = ["markdown", "xml", "plain"]
 
+# Tree view modes
+TREE_VIEW_MODES = ["full", "selection"]
+
 # Language Mapping
 LANGUAGE_MAP = {
     '.py': 'python', '.js': 'javascript', '.ts': 'typescript', '.tsx': 'tsx',

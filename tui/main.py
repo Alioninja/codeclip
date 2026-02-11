@@ -76,6 +76,7 @@ class CodeClipApp(App):
         self.current_dir = Path.cwd()
         self._processing = False
         self._output_format = self._state.get("output_format", "markdown")
+        self._tree_view_mode = self._state.get("tree_view_mode", "full")
         self._ext_checkboxes = []
         self._copy_data = {}
         
@@ -474,6 +475,7 @@ class CodeClipApp(App):
             "all_files": all_files,
             "selected_exts": selected_exts,
             "output_format": self._output_format,
+            "tree_view_mode": self._tree_view_mode,
             "theme": self.theme,
             "max_files_to_show_all": self._max_files_to_show_all,
             "tree_show_first": self._tree_show_first,
@@ -706,6 +708,8 @@ class CodeClipApp(App):
                 max_dirs_to_show_all=self._max_dirs_to_show_all,
                 tree_show_first_dirs=self._tree_show_first_dirs,
                 tree_show_last_dirs=self._tree_show_last_dirs,
+                tree_view_mode=self._tree_view_mode,
+                selected_files=set(files) if self._tree_view_mode == "selection" else None,
             )
             
             # Read file contents with progress updates
@@ -871,6 +875,7 @@ class CodeClipApp(App):
                 tree_show_first_dirs=self._tree_show_first_dirs,
                 tree_show_last_dirs=self._tree_show_last_dirs,
                 current_format=self._output_format,
+                current_tree_view=self._tree_view_mode,
             ),
             self._on_settings_changed,
         )
@@ -900,6 +905,9 @@ class CodeClipApp(App):
             changed = True
         if result.get("output_format") and result["output_format"] != self._output_format:
             self._output_format = result["output_format"]
+            changed = True
+        if result.get("tree_view_mode") and result["tree_view_mode"] != self._tree_view_mode:
+            self._tree_view_mode = result["tree_view_mode"]
             changed = True
         if changed:
             self._persist_state()

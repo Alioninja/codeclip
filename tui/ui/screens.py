@@ -471,6 +471,7 @@ class SettingsScreen(ModalScreen):
         "#input-show-first-dirs",
         "#input-show-last-dirs",
         "#fmt-markdown",
+        "#tv-full",
         "#btn-settings-cancel",
         "#btn-settings-save",
     ]
@@ -479,6 +480,11 @@ class SettingsScreen(ModalScreen):
         ("markdown", "Markdown"),
         ("xml", "XML"),
         ("plain", "Plain Text"),
+    ]
+
+    TREE_VIEW_MAP = [
+        ("full", "Full"),
+        ("selection", "Selection"),
     ]
 
     def __init__(
@@ -490,6 +496,7 @@ class SettingsScreen(ModalScreen):
         tree_show_first_dirs: int = 10,
         tree_show_last_dirs: int = 3,
         current_format: str = "markdown",
+        current_tree_view: str = "full",
     ):
         super().__init__()
         self._max_files_to_show_all = max_files_to_show_all
@@ -499,6 +506,7 @@ class SettingsScreen(ModalScreen):
         self._tree_show_first_dirs = tree_show_first_dirs
         self._tree_show_last_dirs = tree_show_last_dirs
         self._current_format = current_format
+        self._current_tree_view = current_tree_view
 
     def compose(self) -> ComposeResult:
         with Container(id="settings-modal"):
@@ -597,6 +605,21 @@ class SettingsScreen(ModalScreen):
                                 id=f"fmt-{fmt_key}",
                             )
 
+                # Tree view mode section (full width)
+                with Vertical(id="settings-treeview-section"):
+                    yield Static(
+                        "[bold #7f9825]Directory Tree View[/]",
+                        id="settings-treeview-label",
+                    )
+                    with Horizontal(id="settings-treeview-options"):
+                        for tv_key, tv_label in self.TREE_VIEW_MAP:
+                            yield FormatOption(
+                                tv_label,
+                                format_key=tv_key,
+                                selected=(tv_key == self._current_tree_view),
+                                id=f"tv-{tv_key}",
+                            )
+
             yield Static("", id="settings-validation", classes="validation-msg")
 
             # Action buttons (always visible at bottom)
@@ -664,9 +687,13 @@ class SettingsScreen(ModalScreen):
             self._save()
 
     def on_format_option_selected(self, event: FormatOption.Selected):
-        """Handle format option selection - update all options."""
-        for option in self.query(FormatOption):
-            option.set_selected(option is event.option)
+        """Handle format option selection - update options within the same group."""
+        selected = event.option
+        parent = selected.parent
+        if not parent:
+            return
+        for option in parent.query(FormatOption):
+            option.set_selected(option is selected)
 
     def on_input_submitted(self, event: Input.Submitted):
         """Save on Enter from any input."""
@@ -702,9 +729,16 @@ class SettingsScreen(ModalScreen):
 
         # Get selected format from FormatOption widgets
         output_format = self._current_format
-        for option in self.query(FormatOption):
+        for option in self.query_one("#settings-format-options").query(FormatOption):
             if option.selected:
                 output_format = option.format_key
+                break
+
+        # Get selected tree view mode from FormatOption widgets
+        tree_view_mode = self._current_tree_view
+        for option in self.query_one("#settings-treeview-options").query(FormatOption):
+            if option.selected:
+                tree_view_mode = option.format_key
                 break
 
         self.dismiss({
@@ -715,6 +749,7 @@ class SettingsScreen(ModalScreen):
             "tree_show_first_dirs": show_first_dirs,
             "tree_show_last_dirs": show_last_dirs,
             "output_format": output_format,
+            "tree_view_mode": tree_view_mode,
         })
 
     def action_cancel(self):

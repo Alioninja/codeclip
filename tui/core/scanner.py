@@ -105,7 +105,8 @@ def build_folder_tree(base_path, max_depth=None, current_depth=0):
 
 def get_tree_string(start_path, allowed_extensions=None,
                     max_files_to_show_all=None, tree_show_first=None, tree_show_last=None,
-                    max_dirs_to_show_all=None, tree_show_first_dirs=None, tree_show_last_dirs=None):
+                    max_dirs_to_show_all=None, tree_show_first_dirs=None, tree_show_last_dirs=None,
+                    tree_view_mode="full", selected_files=None):
     """Generate a string representation of the directory tree.
 
     When a directory has more files than max_files_to_show_all, only the first
@@ -114,6 +115,10 @@ def get_tree_string(start_path, allowed_extensions=None,
 
     The same logic applies to directories using the max_dirs_to_show_all,
     tree_show_first_dirs, and tree_show_last_dirs parameters.
+
+    When tree_view_mode is "selection", only directories containing selected
+    files are expanded. Other directories are shown but not recursed into.
+    selected_files should be a set of absolute Path objects.
     """
     start_path = Path(start_path)
     if path_contains_ignored_dir(str(start_path)):
@@ -133,8 +138,22 @@ def get_tree_string(start_path, allowed_extensions=None,
     if tree_show_last_dirs is None:
         tree_show_last_dirs = TREE_SHOW_LAST_DIRS
 
+    # Build a set of directory paths that contain selected files (for selection mode)
+    selected_dirs = set()
+    if tree_view_mode == "selection" and selected_files:
+        for f in selected_files:
+            parent = f.parent
+            while parent != start_path and str(parent).startswith(str(start_path)):
+                selected_dirs.add(parent)
+                parent = parent.parent
+            selected_dirs.add(start_path)
+
     lines = []
-    
+
+    def _dir_has_selection(dir_path):
+        """Check if a directory (or any descendant) contains a selected file."""
+        return dir_path in selected_dirs
+
     def walk(path, prefix=""):
         try:
             entries = list(path.iterdir())
@@ -143,6 +162,10 @@ def get_tree_string(start_path, allowed_extensions=None,
 
             if allowed_extensions:
                 files = [f for f in files if f.suffix.lower() in allowed_extensions]
+
+            # In selection mode, only show files that are selected
+            if tree_view_mode == "selection" and selected_files:
+                files = [f for f in files if f in selected_files]
 
             # Apply directory list truncation for long lists
             dirs_to_show = dirs
@@ -196,7 +219,12 @@ def get_tree_string(start_path, allowed_extensions=None,
                     lines.append(f"{prefix}{pointer}{entry.name}/")
                     extension = "    " if is_last_line else "│   "
                     if not path_contains_ignored_dir(str(entry)):
-                        walk(entry, prefix + extension)
+                        # In selection mode, only recurse into dirs that have selected files
+                        if tree_view_mode == "selection" and selected_files:
+                            if _dir_has_selection(entry):
+                                walk(entry, prefix + extension)
+                        else:
+                            walk(entry, prefix + extension)
                 else:
                     lines.append(f"{prefix}{pointer}{entry.name}")
                 line_idx += 1

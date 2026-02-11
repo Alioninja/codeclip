@@ -581,6 +581,50 @@ Toast.-error {
     color: $accent;
 }
 
+#settings-treeview-section {
+    height: auto;
+    margin-top: 1;
+    padding: 0;
+}
+
+#settings-treeview-label {
+    height: 1;
+    padding: 0;
+    margin: 0 0 1 0;
+}
+
+#settings-treeview-options {
+    height: auto;
+    layout: horizontal;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+#settings-treeview-options FormatOption {
+    width: auto;
+    height: 3;
+    padding: 0 2;
+    margin: 0 1 0 0;
+    background: transparent;
+    color: $text;
+    border: blank;
+    content-align: center middle;
+}
+
+#settings-treeview-options FormatOption:focus {
+    background: transparent;
+    border: double $accent;
+    color: $accent;
+    text-style: bold;
+}
+
+#settings-treeview-options FormatOption:hover {
+    background: transparent;
+    border: double $accent;
+    color: $accent;
+}
+
 #settings-buttons {
     dock: bottom;
 }
